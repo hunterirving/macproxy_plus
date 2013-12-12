@@ -1,8 +1,8 @@
 from bs4 import BeautifulSoup
-
+ 
 def macify(html):
     soup = BeautifulSoup(html)
-    for tag in soup(['script', 'link', 'style', 'img', 'noscript']):
+    for tag in soup(['script', 'link', 'style', 'noscript']):
         tag.extract()
     for tag in soup(['div', 'span']):
         tag.replaceWithChildren()
