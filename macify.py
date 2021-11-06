@@ -3,6 +3,10 @@ import logging
  
 def macify(html):
     soup = BeautifulSoup(html, features="html.parser")
+    for tag in soup.findAll('a', href=True):
+        tag['href'] = tag['href'].replace("https://", "http://")
+    for tag in soup('img'):
+        tag['src'] = tag['src'].replace("https://", "http://")
     for tag in soup(['script', 'link', 'style', 'noscript']):
         tag.extract()
     for tag in soup(['div', 'span']):
@@ -10,8 +14,6 @@ def macify(html):
     for tag in soup():
         for attr in ['style', 'onclick']:
             del tag[attr]
-    for a in soup.findAll('a', href=True):
-        a['href'] = a['href'].replace("https://", "http://")
     return str(soup)
 
 if __name__ == '__main__':
