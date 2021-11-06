@@ -10,8 +10,6 @@ def macify(html):
         tag['src'] = tag['src'].replace("https://", "http://")
     for tag in soup(['script', 'link', 'style', 'noscript']):
         tag.extract()
-    for tag in soup(['div', 'span']):
-        tag.replaceWithChildren()
     for tag in soup():
         for attr in ['style', 'onclick']:
             del tag[attr]
