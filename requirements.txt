@@ -1,7 +1,7 @@
-Flask==0.10.1
-Jinja2==2.7.1
-MarkupSafe==0.18
-Werkzeug==0.9.4
-beautifulsoup4==4.3.2
-itsdangerous==0.23
-requests==2.1.0
+Flask==2.0.2
+Jinja2==3.0.2
+MarkupSafe==2.0.1
+Werkzeug==2.0.2
+beautifulsoup4==4.10.0
+itsdangerous==2.0.1
+requests==2.26.0
