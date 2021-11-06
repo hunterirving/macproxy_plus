@@ -8,14 +8,14 @@ session = requests.Session()
 @app.route('/', defaults={'path': ''}, methods=['GET'])
 @app.route('/<path:path>', methods=['GET'])
 def get(path):
-    url = request.url
+    url = request.url.replace('https://', 'http://', 1)
     resp = session.get(url, params=request.args)
     return macify(resp.content), resp.status_code
 
 @app.route('/', defaults={'path': ''}, methods=['POST'])
 @app.route('/<path:path>', methods=['POST'])
 def post(path):
-    url = request.url
+    url = request.url.replace('https://', 'http://', 1)
     resp = session.post(url, data=request.form, allow_redirects=True)
     return macify(resp.content), resp.status_code
 
