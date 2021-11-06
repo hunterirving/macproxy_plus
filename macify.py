@@ -1,8 +1,9 @@
 from bs4 import BeautifulSoup
-import logging
  
 def macify(html):
     soup = BeautifulSoup(html, features="html.parser")
+    for tag in soup('base'):
+        tag['href'] = tag['href'].replace("https://", "http://")
     for tag in soup.findAll('a', href=True):
         tag['href'] = tag['href'].replace("https://", "http://")
     for tag in soup('img'):
