@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup
  
 def macify(html):
-    soup = BeautifulSoup(html)
+    soup = BeautifulSoup(html, features="html.parser")
     for tag in soup(['script', 'link', 'style', 'noscript']):
         tag.extract()
     for tag in soup(['div', 'span']):
