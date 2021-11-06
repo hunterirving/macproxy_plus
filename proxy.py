@@ -10,14 +10,18 @@ session = requests.Session()
 def get(path):
     url = request.url.replace('https://', 'http://', 1)
     resp = session.get(url, params=request.args)
-    return macify(resp.content), resp.status_code
+    if resp.headers['Content-Type'].startswith("text/html"):
+        return macify(resp.content), resp.status_code
+    return resp.content, resp.status_code
 
 @app.route('/', defaults={'path': ''}, methods=['POST'])
 @app.route('/<path:path>', methods=['POST'])
 def post(path):
     url = request.url.replace('https://', 'http://', 1)
     resp = session.post(url, data=request.form, allow_redirects=True)
-    return macify(resp.content), resp.status_code
+    if resp.headers['Content-Type'].startswith("text/html"):
+        return macify(resp.content), resp.status_code
+    return resp.content, resp.status_code
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
