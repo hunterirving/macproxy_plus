@@ -1,4 +1,5 @@
 from bs4 import BeautifulSoup
+import logging
  
 def macify(html):
     soup = BeautifulSoup(html, features="html.parser")
@@ -9,6 +10,8 @@ def macify(html):
     for tag in soup():
         for attr in ['style', 'onclick']:
             del tag[attr]
+    for a in soup.findAll('a', href=True):
+        a['href'] = a['href'].replace("https://", "http://")
     return str(soup)
 
 if __name__ == '__main__':
