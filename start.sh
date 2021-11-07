@@ -2,6 +2,24 @@
 set -e
 # set -x # Uncomment to Debug
 
+# verify packages installed
+ERROR=0
+if ! command -v python3 &> /dev/null ; then
+    echo "python3 could not be found"
+    echo "Run 'sudo apt install python3' to fix."
+    ERROR=1
+fi
+if ! python3 -m venv --help &> /dev/null ; then
+    echo "venv could not be found"
+    echo "Run 'sudo apt install python3-venv' to fix."
+    ERROR=1
+fi
+if [ $ERROR = 1 ] ; then
+  echo
+  echo "Fix errors and re-run ./start.sh"
+  exit 1
+fi
+
 cd "$(dirname "$0")"
 if ! test -e venv; then
   echo "Creating python venv for macproxy"
