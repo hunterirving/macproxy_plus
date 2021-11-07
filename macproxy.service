@@ -1,0 +1,14 @@
+[Unit]
+Description=Macproxy service
+After=network.target
+
+[Service]
+Type=simple
+Restart=always
+ExecStart=/path/to/start.sh
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=MACPROXY
+
+[Install]
+WantedBy=multi-user.target
