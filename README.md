@@ -25,6 +25,9 @@ ExecStart=/home/pi/macproxy/start.sh
 Then copy the service file to /etc/systemd/system and enable the service:
 
 $ sudo cp macproxy.service /etc/systemd/system/
+
 $ sudo systemctl enable macproxy
+
 $ sudo systemctl daemon-reload
+
 $ sudo systemctl start macproxy
