@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup
  
-def macify(html):
+def transcode_html(html):
     soup = BeautifulSoup(html, features="html.parser")
     for tag in soup('base'):
         tag['href'] = tag['href'].replace("https://", "http://")

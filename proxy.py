@@ -1,6 +1,6 @@
-from macify import macify
 import requests
 from flask import Flask, request, session, g
+from html_utils import transcode_html
 
 app = Flask(__name__)
 session = requests.Session()
@@ -12,7 +12,7 @@ def get(path):
     resp = session.get(url, params=request.args)
     g.contenttype = resp.headers['Content-Type']
     if resp.headers['Content-Type'].startswith("text/html"):
-        return macify(resp.content), resp.status_code
+        return transcode_html(resp.content), resp.status_code
     return resp.content, resp.status_code
 
 @app.route('/', defaults={'path': ''}, methods=['POST'])
@@ -22,7 +22,7 @@ def post(path):
     resp = session.post(url, data=request.form, allow_redirects=True)
     g.contenttype = resp.headers['Content-Type']
     if resp.headers['Content-Type'].startswith("text/html"):
-        return macify(resp.content), resp.status_code
+        return transcode_html(resp.content), resp.status_code
     return resp.content, resp.status_code
 
 @app.after_request
