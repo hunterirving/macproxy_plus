@@ -7,9 +7,17 @@ The proxy.py script runs a Flask server that takes all requests and proxies them
 
 The proxy server listens to port 5000 by default, but the port number can be changed using a command line parameter.
 
+Requirements
+============
+Python3 for running the script, venv if you want to use the virtual environment, or pip if you want to install libraries manually.
+
+```
+$ sudo apt install python3 python3-venv python3-pip
+```
+
 Usage
 =====
-Launch the start.sh shell script to create and manage a venv Python environment, after which it will launch the proxy script.
+The start.sh shell script will create and manage a venv Python environment, and if successful launch the proxy script.
 
 ```
 $ ./start.sh
@@ -21,9 +29,10 @@ Launch with a specific port number (defaults to port 5000):
 $ ./start.sh --port=5001
 ```
 
-You may also start the Python script by itself, and use system Python.
+You may also start the Python script by itself, using system Python.
 
 ```
+$ pip3 install -r requirements.txt
 $ python3 proxy.py
 ```
 
