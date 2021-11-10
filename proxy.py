@@ -1,4 +1,5 @@
 import requests
+from sys import argv
 from flask import Flask, request, session, g
 from html_utils import transcode_html
 
@@ -33,4 +34,8 @@ def apply_caching(resp):
     return resp
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    if len(argv) > 1:
+        port = argv[1]
+    else:
+        port = 5000
+    app.run(host='0.0.0.0', port=port)

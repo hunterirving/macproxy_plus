@@ -45,5 +45,21 @@ else
   fi
 fi
 
+# parse arguments
+while [ "$1" != "" ]; do
+    PARAM=$(echo "$1" | awk -F= '{print $1}')
+    VALUE=$(echo "$1" | awk -F= '{print $2}')
+    case $PARAM in
+	-p | --port)
+	    PORT=$VALUE
+	    ;;
+        *)
+            echo "ERROR: unknown parameter \"$PARAM\""
+            exit 1
+            ;;
+    esac
+    shift
+done
+
 echo "Starting macproxy..."
-python3 proxy.py
+python3 proxy.py ${PORT}
