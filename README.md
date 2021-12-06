@@ -1,4 +1,4 @@
-macproxy
+Macproxy
 ========
 
 A simple HTTP proxy script for putting early computers on the Web. Despite its name, there is nothing Mac specific about this proxy. It was originally designed with compatibility with the MacWeb web browser in mind, but has been tested on a variety of vintage web browsers since.
