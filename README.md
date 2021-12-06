@@ -45,10 +45,10 @@ $ python3 proxy.py 5001
 systemd service
 ===============
 This repo comes with a systemd service configuration, the preferred way to manage daemons on Debian based Linux flavors.
-Edit the macproxy.service file and point the ExecStart= parameter to the location of the start.sh file, e.g. on a Raspberry Pi:
+Edit the macproxy.service file and point the ExecStart= parameter to the location of the start_macproxy.sh file, e.g. on a Raspberry Pi:
 
 ```
-ExecStart=/home/pi/macproxy/start.sh
+ExecStart=/home/pi/macproxy/start_macproxy.sh
 ```
 
 Then copy the service file to /etc/systemd/system and enable the service:
