@@ -16,13 +16,13 @@ if ! python3 -m venv --help &> /dev/null ; then
 fi
 if [ $ERROR = 1 ] ; then
   echo
-  echo "Fix errors and re-run ./start.sh"
+  echo "Fix errors and re-run ./start_macproxy.sh"
   exit 1
 fi
 
 cd "$(dirname "$0")"
 if ! test -e venv; then
-  echo "Creating python venv for macproxy"
+  echo "Creating python venv for Macproxy"
   python3 -m venv venv
   echo "Activating venv"
   source venv/bin/activate
@@ -33,17 +33,6 @@ if ! test -e venv; then
 fi
 
 source venv/bin/activate
-
-# Detect if someone updates - we need to re-run pip install.
-if ! test -e current; then
-  git rev-parse > current
-else
-  if [ "$(cat current)" != "$(git rev-parse HEAD)" ]; then
-      echo "New version detected, updating requirements.txt"
-      pip install -r requirements.txt
-      git rev-parse HEAD > current
-  fi
-fi
 
 # parse arguments
 while [ "$1" != "" ]; do
