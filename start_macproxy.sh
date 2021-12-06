@@ -50,5 +50,5 @@ while [ "$1" != "" ]; do
     shift
 done
 
-echo "Starting macproxy..."
+echo "Starting Macproxy..."
 python3 proxy.py ${PORT}
