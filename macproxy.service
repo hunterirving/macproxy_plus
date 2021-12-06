@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 Restart=always
-ExecStart=/path/to/macproxy/start.sh
+ExecStart=/home/user/macproxy/start_macproxy.sh
 SyslogIdentifier=MACPROXY
 
 [Install]
