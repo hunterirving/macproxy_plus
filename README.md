@@ -17,16 +17,16 @@ $ sudo apt install python3 python3-venv python3-pip
 
 Usage
 =====
-The start.sh shell script will create and manage a venv Python environment, and if successful launch the proxy script.
+The start_macproxy.sh shell script will create and manage a venv Python environment, and if successful launch the proxy script.
 
 ```
-$ ./start.sh
+$ ./start_macproxy.sh
 ```
 
 Launch with a specific port number (defaults to port 5000):
 
 ```
-$ ./start.sh --port=5001
+$ ./start_macproxy.sh --port=5001
 ```
 
 You may also start the Python script by itself, using system Python.
