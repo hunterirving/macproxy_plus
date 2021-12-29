@@ -17,8 +17,8 @@ def transcode_html(html):
         try:
             tag["src"] = tag["src"].replace("https://", "http://")
         except:
-            pass
-    for tag in soup(["script", "link", "style", "noscript"]):
+            print("Malformed img tag: " + str(tag))
+    for tag in soup(["script", "link", "style", "source", "picture"]):
         tag.decompose()
     for tag in soup():
         for attr in ["style", "onclick"]:
