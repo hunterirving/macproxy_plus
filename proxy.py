@@ -11,11 +11,19 @@ session = requests.Session()
 def get(path):
     url = request.url.replace('https://', 'http://', 1)
     headers = {
-        "User-Agent": request.headers.get('User-Agent'),
+        "Accept": request.headers.get("Accept"),
+        "Accept-Encoding": request.headers.get("Accept-Encoding"),
+        "Accept-Language": request.headers.get("Accept-Language"),
+        "Connection": request.headers.get("Connection"),
+        "Referer": request.headers.get("Referer"),
+        "User-Agent": request.headers.get("User-Agent"),
     }
     resp = session.get(url, params=request.args, headers=headers)
-    g.content_type = resp.headers['Content-Type']
-    if resp.headers['Content-Type'].startswith("text/html"):
+    try:
+        g.content_type = resp.headers["Content-Type"]
+    except:
+        print("No Content-Type header present")
+    if resp.headers["Content-Type"].startswith("text/html"):
         return transcode_html(resp.content), resp.status_code
     return resp.content, resp.status_code
 
@@ -24,11 +32,19 @@ def get(path):
 def post(path):
     url = request.url.replace('https://', 'http://', 1)
     headers = {
-        "User-Agent": request.headers.get('User-Agent'),
+        "Accept": request.headers.get("Accept"),
+        "Accept-Encoding": request.headers.get("Accept-Encoding"),
+        "Accept-Language": request.headers.get("Accept-Language"),
+        "Connection": request.headers.get("Connection"),
+        "Referer": request.headers.get("Referer"),
+        "User-Agent": request.headers.get("User-Agent"),
     }
     resp = session.post(url, data=request.form, headers=headers, allow_redirects=True)
-    g.content_type = resp.headers['Content-Type']
-    if resp.headers['Content-Type'].startswith("text/html"):
+    try:
+        g.content_type = resp.headers['Content-Type']
+    except:
+        print("No Content-Type header present")
+    if resp.headers["Content-Type"].startswith("text/html"):
         return transcode_html(resp.content), resp.status_code
     return resp.content, resp.status_code
 
@@ -36,7 +52,10 @@ def post(path):
 def apply_caching(resp):
     # Workaround for retaining the Content-Type header for f.e. downloading binary files.
     # There may be a more elegant way to do this.
-    resp.headers['Content-Type'] = g.content_type
+    try:
+        resp.headers["Content-Type"] = g.content_type
+    except:
+        pass
     return resp
 
 if __name__ == '__main__':
