@@ -1,3 +1,7 @@
+"""
+Macproxy -- A simple HTTP proxy for vintage web browsers
+"""
+
 import requests
 from sys import argv
 from flask import Flask, request, session, g
@@ -9,6 +13,9 @@ session = requests.Session()
 @app.route('/', defaults={'path': ''}, methods=['GET'])
 @app.route('/<path:path>', methods=['GET'])
 def get(path):
+"""
+Builds the request for the HTTP GET method
+"""
     url = request.url.replace('https://', 'http://', 1)
     headers = {
         "Accept": request.headers.get("Accept"),
@@ -30,6 +37,9 @@ def get(path):
 @app.route('/', defaults={'path': ''}, methods=['POST'])
 @app.route('/<path:path>', methods=['POST'])
 def post(path):
+"""
+Builds the request for the HTTP POST method
+"""
     url = request.url.replace('https://', 'http://', 1)
     headers = {
         "Accept": request.headers.get("Accept"),
@@ -50,6 +60,9 @@ def post(path):
 
 @app.after_request
 def apply_caching(resp):
+"""
+Modifies the response after the request has been built
+"""
     # Workaround for retaining the Content-Type header for f.e. downloading binary files.
     # There may be a more elegant way to do this.
     try:
