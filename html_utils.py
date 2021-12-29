@@ -7,7 +7,10 @@ def transcode_html(html):
     for tag in soup.findAll('a', href=True):
         tag['href'] = tag['href'].replace("https://", "http://")
     for tag in soup('img'):
-        tag['src'] = tag['src'].replace("https://", "http://")
+        try:
+            tag['src'] = tag['src'].replace("https://", "http://")
+        except:
+            pass
     for tag in soup(['script', 'link', 'style', 'noscript']):
         tag.extract()
     for tag in soup():
