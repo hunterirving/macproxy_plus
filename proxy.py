@@ -31,7 +31,7 @@ def get(path):
     except:
         print("No Content-Type header present")
     if resp.headers["Content-Type"].startswith("text/html"):
-        return transcode_html(resp.content), resp.status_code
+        return transcode_html(resp.content, "html5"), resp.status_code
     return resp.content, resp.status_code
 
 @app.route("/", defaults={"path": ""}, methods=["POST"])
@@ -55,7 +55,7 @@ def post(path):
     except:
         print("No Content-Type header present")
     if resp.headers["Content-Type"].startswith("text/html"):
-        return transcode_html(resp.content), resp.status_code
+        return transcode_html(resp.content, "html5"), resp.status_code
     return resp.content, resp.status_code
 
 @app.after_request
