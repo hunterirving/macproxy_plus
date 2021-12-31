@@ -39,12 +39,31 @@ $ python3 proxy.py
 Launch with a specific port number:
 
 ```
-$ python3 proxy.py 5001
+$ python3 proxy.py --port 5001
+```
+
+Advanced Options
+================
+There are currently two advanced options that changes how Macproxy formats the html code it sends back to the user agent browser.
+
+Selects the BeatifulSoup html formatter that Macproxy will use, e.g. the minimal parser:
+```
+$ python3 proxy.py --html-formatter minimal
+```
+
+Turns off the conversion of select typographic symbols to ASCII characters:
+```
+$ python3 proxy.py --disable-char-conversion
+```
+
+Refer to Macproxy's helptext for more details:
+```
+$ python3 proxy.py -h
 ```
 
 systemd service
 ===============
-This repo comes with a systemd service configuration, the preferred way to manage daemons on contemporary Linux distributions.
+This repo comes with a systemd service configuration template. At the time of writing, systemd is the de-factor standard solution for managing daemons on contemporary Linux distributions.
 Edit the macproxy.service file and point the ExecStart= parameter to the location of the start_macproxy.sh file, e.g. on a Raspberry Pi:
 
 ```
