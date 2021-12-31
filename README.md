@@ -46,7 +46,7 @@ Advanced Options
 ================
 There are currently two advanced options that changes how Macproxy formats the html code it sends back to the user agent browser.
 
-Selects the BeatifulSoup html formatter that Macproxy will use, e.g. the minimal parser:
+Selects the BeatifulSoup html formatter that Macproxy will use, e.g. the minimal formatter:
 ```
 $ python3 proxy.py --html-formatter minimal
 ```
@@ -63,7 +63,7 @@ $ python3 proxy.py -h
 
 systemd service
 ===============
-This repo comes with a systemd service configuration template. At the time of writing, systemd is the de-factor standard solution for managing daemons on contemporary Linux distributions.
+This repo comes with a systemd service configuration template. At the time of writing, systemd is the de-facto standard solution for managing daemons on contemporary Linux distributions.
 Edit the macproxy.service file and point the ExecStart= parameter to the location of the start_macproxy.sh file, e.g. on a Raspberry Pi:
 
 ```
