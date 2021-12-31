@@ -44,7 +44,13 @@ $ python3 proxy.py --port 5001
 
 Advanced Options
 ================
-There are currently two advanced options that changes how Macproxy formats the html code it sends back to the user agent browser.
+Use the advanced options to change how Macproxy presents itself to the web, and how it processes the data it gets back.
+
+By default, Macproxy will forward the actual User-Agent string of the originating browser in its request headers. This option overrides this with an arbitrary string, allowing you to spoof as any browser. For instance, Opera Mini 8.0 for J2ME:
+
+```
+$ python3 proxy.py --user-agent "Opera/9.80 (J2ME/MIDP; Opera Mini/8.0.35158/36.2534; U; en) Presto/2.12.423 Version/12.16"
+```
 
 Selects the BeatifulSoup html formatter that Macproxy will use, e.g. the minimal formatter:
 ```
