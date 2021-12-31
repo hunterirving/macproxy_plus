@@ -23,6 +23,8 @@ def get(path):
         "Referer": request.headers.get("Referer"),
         "User-Agent": request.headers.get("User-Agent"),
     }
+    if app.config["USER_AGENT"]:
+        headers["User-Agent"] = app.config["USER_AGENT"]
     resp = session.get(url, params=request.args, headers=headers)
     try:
         g.content_type = resp.headers["Content-Type"]
@@ -49,6 +51,8 @@ def post(path):
         "Referer": request.headers.get("Referer"),
         "User-Agent": request.headers.get("User-Agent"),
     }
+    if app.config["USER_AGENT"]:
+        headers["User-Agent"] = app.config["USER_AGENT"]
     resp = session.post(url, data=request.form, headers=headers, allow_redirects=True)
     try:
         g.content_type = resp.headers["Content-Type"]
@@ -85,6 +89,13 @@ if __name__ == "__main__":
         help="Port number the web server will run on",
         )
     parser.add_argument(
+        "--user-agent",
+        type=str,
+        default="",
+        action="store",
+        help="Spoof as a particular web browser, e.g. \"Mozilla/5.0\"",
+        )
+    parser.add_argument(
         "--html-formatter",
         type=str,
         choices=["minimal", "html", "html5"],
@@ -98,6 +109,7 @@ if __name__ == "__main__":
         help="Disable the conversion of common typographic characters to ASCII",
         )
     arguments = parser.parse_args()
+    app.config["USER_AGENT"] = arguments.user_agent
     app.config["HTML_FORMATTER"] = arguments.html_formatter
     app.config["DISABLE_CHAR_CONVERSION"] = arguments.disable_char_conversion
     app.run(host="0.0.0.0", port=arguments.port)
