@@ -19,9 +19,7 @@ def get(path):
     url = request.url.replace("https://", "http://", 1)
     headers = {
         "Accept": request.headers.get("Accept"),
-        "Accept-Encoding": request.headers.get("Accept-Encoding"),
         "Accept-Language": request.headers.get("Accept-Language"),
-        "Connection": request.headers.get("Connection"),
         "Referer": request.headers.get("Referer"),
         "User-Agent": request.headers.get("User-Agent"),
     }
@@ -47,9 +45,7 @@ def post(path):
     url = request.url.replace("https://", "http://", 1)
     headers = {
         "Accept": request.headers.get("Accept"),
-        "Accept-Encoding": request.headers.get("Accept-Encoding"),
         "Accept-Language": request.headers.get("Accept-Language"),
-        "Connection": request.headers.get("Connection"),
         "Referer": request.headers.get("Referer"),
         "User-Agent": request.headers.get("User-Agent"),
     }
