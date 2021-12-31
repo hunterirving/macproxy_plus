@@ -53,7 +53,7 @@ while [ "$1" != "" ]; do
     VALUE=$(echo "$1" | awk -F= '{print $2}')
     case $PARAM in
 	-p | --port)
-	    PORT=$VALUE
+	    PORT="--port $VALUE"
 	    ;;
         *)
             echo "ERROR: unknown parameter \"$PARAM\""
