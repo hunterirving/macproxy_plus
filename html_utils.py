@@ -35,12 +35,13 @@ UNICODE_CHAR_CONVERSION_TABLE = {
         "≠": b"!=",
 }
  
-def transcode_html(html, formatter):
+def transcode_html(html, html_formatter, disable_char_conversion):
     """
     Uses BeatifulSoup to transcode payloads of the text/html content type
     """
-    for char in UNICODE_CHAR_CONVERSION_TABLE.keys():
-        html = html.replace(char.encode("utf-8"), UNICODE_CHAR_CONVERSION_TABLE[char])
+    if not disable_char_conversion:
+        for char in UNICODE_CHAR_CONVERSION_TABLE.keys():
+            html = html.replace(char.encode("utf-8"), UNICODE_CHAR_CONVERSION_TABLE[char])
     soup = BeautifulSoup(html, "html.parser")
     for tag in soup(["script", "link", "style", "source", "picture"]):
         tag.decompose()
@@ -56,4 +57,4 @@ def transcode_html(html, formatter):
             tag["src"] = tag["src"].replace("https://", "http://")
         except:
             print("Malformed img tag: " + str(tag))
-    return soup.prettify(formatter=formatter)
+    return soup.prettify(formatter=html_formatter)

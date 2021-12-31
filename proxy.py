@@ -3,7 +3,7 @@ Macproxy -- A simple HTTP proxy for vintage web browsers
 """
 
 import requests
-from sys import argv
+import argparse
 from flask import Flask, request, session, g
 from html_utils import transcode_html
 
@@ -29,9 +29,13 @@ def get(path):
     try:
         g.content_type = resp.headers["Content-Type"]
     except:
-        print("No Content-Type header present")
+        print("Warning: No Content-Type header detected")
     if resp.headers["Content-Type"].startswith("text/html"):
-        return transcode_html(resp.content, "html5"), resp.status_code
+        return transcode_html(
+                resp.content,
+                app.config["HTML_FORMATTER"],
+                app.config["DISABLE_CHAR_CONVERSION"],
+            ), resp.status_code
     return resp.content, resp.status_code
 
 @app.route("/", defaults={"path": ""}, methods=["POST"])
@@ -53,9 +57,13 @@ def post(path):
     try:
         g.content_type = resp.headers["Content-Type"]
     except:
-        print("No Content-Type header present")
+        print("Warning: No Content-Type header detected")
     if resp.headers["Content-Type"].startswith("text/html"):
-        return transcode_html(resp.content, "html5"), resp.status_code
+        return transcode_html(
+                resp.content,
+                app.config["HTML_FORMATTER"],
+                app.config["DISABLE_CHAR_CONVERSION"],
+            ), resp.status_code
     return resp.content, resp.status_code
 
 @app.after_request
@@ -72,8 +80,28 @@ def apply_caching(resp):
     return resp
 
 if __name__ == "__main__":
-    if len(argv) > 1:
-        port = argv[1]
-    else:
-        port = 5000
-    app.run(host="0.0.0.0", port=port)
+    parser = argparse.ArgumentParser(description="Macproxy command line arguments")
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=5000,
+        action="store",
+        help="Port number the web server will run on",
+        )
+    parser.add_argument(
+        "--html-formatter",
+        type=str,
+        choices=["minimal", "html", "html5"],
+        default="html5",
+        action="store",
+        help="The BeautifulSoup html formatter that Macproxy will use",
+        )
+    parser.add_argument(
+        "--disable-char-conversion",
+        action="store_true",
+        help="Disable the conversion of common typographic characters to ASCII",
+        )
+    arguments = parser.parse_args()
+    app.config["HTML_FORMATTER"] = arguments.html_formatter
+    app.config["DISABLE_CHAR_CONVERSION"] = arguments.disable_char_conversion
+    app.run(host="0.0.0.0", port=arguments.port)
