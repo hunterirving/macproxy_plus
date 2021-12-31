@@ -46,7 +46,7 @@ Advanced Options
 ================
 There are currently two advanced options that changes how Macproxy formats the html code it sends back to the user agent browser.
 
-Selects the BeatifulSoup html formatter that Macproxy will use, e.g. the minimal parser:
+Selects the BeatifulSoup html formatter that Macproxy will use, e.g. the minimal formatter:
 ```
 $ python3 proxy.py --html-formatter minimal
 ```
