@@ -26,10 +26,12 @@ def get(path):
     if app.config["USER_AGENT"]:
         headers["User-Agent"] = app.config["USER_AGENT"]
     resp = session.get(url, params=request.args, headers=headers)
-    try:
+    if "content-type" in resp.headers.keys():
         g.content_type = resp.headers["Content-Type"]
-    except:
-        print("Info: No Content-Type header in response to GET request")
+        print("Content-type in response header: " + g.content_type)
+    if "location" in resp.headers.keys():
+        g.location = resp.headers["Location"].replace("https://", "http://", 1)
+        print("Location in response header: " + g.location)
     if resp.headers["Content-Type"].startswith("text/html"):
         return transcode_html(
                 resp.content,
@@ -54,14 +56,12 @@ def post(path):
     if app.config["USER_AGENT"]:
         headers["User-Agent"] = app.config["USER_AGENT"]
     resp = session.post(url, data=request.form, headers=headers, allow_redirects=True)
-    try:
+    if "content-type" in resp.headers.keys():
         g.content_type = resp.headers["Content-Type"]
-    except:
-        print("Info: No Content-Type header in response to POST request")
-    try:
-        g.location = resp.headers["Location"]
-    except:
-        print("Info: No Location header in response to POST request")
+        print("Content-type in response header: " + g.content_type)
+    if "location" in resp.headers.keys():
+        g.location = resp.headers["Location"].replace("https://", "http://", 1)
+        print("Location in response header: " + g.location)
     if resp.headers["Content-Type"].startswith("text/html"):
         return transcode_html(
                 resp.content,
