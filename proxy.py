@@ -29,7 +29,7 @@ def get(path):
     try:
         g.content_type = resp.headers["Content-Type"]
     except:
-        print("Warning: No Content-Type header detected")
+        print("Info: No Content-Type header in response to GET request")
     if resp.headers["Content-Type"].startswith("text/html"):
         return transcode_html(
                 resp.content,
@@ -57,7 +57,11 @@ def post(path):
     try:
         g.content_type = resp.headers["Content-Type"]
     except:
-        print("Warning: No Content-Type header detected")
+        print("Info: No Content-Type header in response to POST request")
+    try:
+        g.location = resp.headers["Location"]
+    except:
+        print("Info: No Location header in response to POST request")
     if resp.headers["Content-Type"].startswith("text/html"):
         return transcode_html(
                 resp.content,
@@ -75,6 +79,10 @@ def apply_caching(resp):
     # There may be a more elegant way to do this.
     try:
         resp.headers["Content-Type"] = g.content_type
+    except:
+        pass
+    try:
+        resp.headers["Location"] = g.location
     except:
         pass
     return resp
