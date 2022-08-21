@@ -28,10 +28,6 @@ def get(path):
     resp = session.get(url, params=request.args, headers=headers)
     if "content-type" in resp.headers.keys():
         g.content_type = resp.headers["Content-Type"]
-        print("Content-type in response header: " + g.content_type)
-    if "location" in resp.headers.keys():
-        g.location = resp.headers["Location"].replace("https://", "http://", 1)
-        print("Location in response header: " + g.location)
     if resp.headers["Content-Type"].startswith("text/html"):
         return transcode_html(
                 resp.content,
@@ -58,10 +54,6 @@ def post(path):
     resp = session.post(url, data=request.form, headers=headers, allow_redirects=True)
     if "content-type" in resp.headers.keys():
         g.content_type = resp.headers["Content-Type"]
-        print("Content-type in response header: " + g.content_type)
-    if "location" in resp.headers.keys():
-        g.location = resp.headers["Location"].replace("https://", "http://", 1)
-        print("Location in response header: " + g.location)
     if resp.headers["Content-Type"].startswith("text/html"):
         return transcode_html(
                 resp.content,
@@ -79,10 +71,6 @@ def apply_caching(resp):
     # There may be a more elegant way to do this.
     try:
         resp.headers["Content-Type"] = g.content_type
-    except:
-        pass
-    try:
-        resp.headers["Location"] = g.location
     except:
         pass
     return resp
