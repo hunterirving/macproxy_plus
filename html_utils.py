@@ -29,7 +29,7 @@ UNICODE_CHAR_CONVERSION_TABLE = {
         "…": b"...",
         "′": b"'",
         "″": b"''",
-        "€": b"Euro",
+        "€": b"EUR",
         "™": b"(tm)",
         "≈": b"~",
         "≠": b"!=",
