@@ -37,7 +37,7 @@ UNICODE_CHAR_CONVERSION_TABLE = {
  
 def transcode_html(html, html_formatter, disable_char_conversion):
     """
-    Uses BeatifulSoup to transcode payloads of the text/html content type
+    Uses BeautifulSoup to transcode payloads of the text/html content type
     """
     if not disable_char_conversion:
         for char in UNICODE_CHAR_CONVERSION_TABLE.keys():
