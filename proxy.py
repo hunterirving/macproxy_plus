@@ -4,11 +4,14 @@ Macproxy -- A simple HTTP proxy for vintage web browsers
 
 import requests
 import argparse
-from flask import Flask, request, session, g
+from flask import Flask, request, session, g, abort
 from html_utils import transcode_html
 
 app = Flask(__name__)
 session = requests.Session()
+
+HTTP_ERRORS = (403, 404, 500, 503, 504)
+ERROR_HEADER = "[[Macproxy Encountered an Error]]"
 
 @app.route("/", defaults={"path": ""}, methods=["GET"])
 @app.route("/<path:path>", methods=["GET"])
@@ -25,7 +28,13 @@ def get(path):
     }
     if app.config["USER_AGENT"]:
         headers["User-Agent"] = app.config["USER_AGENT"]
-    resp = session.get(url, params=request.args, headers=headers)
+    try:
+        resp = session.get(url, params=request.args, headers=headers)
+    except Exception as e:
+        return abort(500, ERROR_HEADER + str(e))
+
+    if resp.status_code in HTTP_ERRORS:
+        return abort(resp.status_code)
     if "content-type" in resp.headers.keys():
         g.content_type = resp.headers["Content-Type"]
     if resp.headers["Content-Type"].startswith("text/html"):
@@ -51,7 +60,13 @@ def post(path):
     }
     if app.config["USER_AGENT"]:
         headers["User-Agent"] = app.config["USER_AGENT"]
-    resp = session.post(url, data=request.form, headers=headers, allow_redirects=True)
+    try:
+        resp = session.post(url, data=request.form, headers=headers, allow_redirects=True)
+    except Exception as e:
+        return abort(500, ERROR_HEADER + str(e))
+
+    if resp.status_code in HTTP_ERRORS:
+        return abort(resp.status_code)
     if "content-type" in resp.headers.keys():
         g.content_type = resp.headers["Content-Type"]
     if resp.headers["Content-Type"].startswith("text/html"):
