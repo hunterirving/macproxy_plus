@@ -27,7 +27,7 @@ if test -e venv; then
         GOOD_VENV=false
     else
         source venv/bin/activate
-        pip3 list 1> /dev/null
+        pip3 list &> /dev/null
         test $? -eq 1 && GOOD_VENV=false
     fi
     if ! "$GOOD_VENV"; then
@@ -43,22 +43,30 @@ if ! test -e venv; then
   python3 -m venv venv
   echo "Activating venv"
   source venv/bin/activate
-  echo "Installing requirements.txt"
-  pip3 install wheel
-  pip3 install -r requirements.txt
+  echo "Installing base requirements.txt"
+  pip3 install wheel &> /dev/null
+  pip3 install -r requirements.txt &> /dev/null
   git rev-parse HEAD > current
 fi
 
 source venv/bin/activate
+
+# Install extension-specific requirements
+for ext in $(python3 -c "import config; print(' '.join(config.ENABLED_EXTENSIONS))"); do
+  if test -e "extensions/$ext/requirements.txt"; then
+    echo "Installing requirements for extension $ext"
+    pip3 install -r "extensions/$ext/requirements.txt" -q
+  fi
+done
 
 # parse arguments
 while [ "$1" != "" ]; do
     PARAM=$(echo "$1" | awk -F= '{print $1}')
     VALUE=$(echo "$1" | awk -F= '{print $2}')
     case $PARAM in
-	-p | --port)
-	    PORT="--port $VALUE"
-	    ;;
+    -p | --port)
+        PORT="--port $VALUE"
+        ;;
         *)
             echo "ERROR: unknown parameter \"$PARAM\""
             exit 1

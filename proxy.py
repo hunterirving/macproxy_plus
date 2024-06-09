@@ -1,11 +1,9 @@
-"""
-Macproxy -- A simple HTTP proxy for vintage web browsers
-"""
-
+import os
 import requests
 import argparse
 from flask import Flask, request, session, g, abort
 from html_utils import transcode_html
+import config
 
 app = Flask(__name__)
 session = requests.Session()
@@ -13,12 +11,30 @@ session = requests.Session()
 HTTP_ERRORS = (403, 404, 500, 503, 504)
 ERROR_HEADER = "[[Macproxy Encountered an Error]]"
 
-@app.route("/", defaults={"path": ""}, methods=["GET"])
-@app.route("/<path:path>", methods=["GET"])
-def get(path):
-    """
-    Builds the request for the HTTP GET method
-    """
+# Load extensions
+extensions = {}
+domain_to_extension = {}
+for ext in config.ENABLED_EXTENSIONS:
+    module = __import__(f"extensions.{ext}.{ext}", fromlist=[''])
+    extensions[ext] = module
+    domain_to_extension[module.DOMAIN] = module
+
+@app.route("/", defaults={"path": ""}, methods=["GET", "POST"])
+@app.route("/<path:path>", methods=["GET", "POST"])
+def handle_request(path):
+    host = request.host.split(':')[0]  # Remove port if present
+    if host in domain_to_extension:
+        if request.method == "POST":
+            return domain_to_extension[host].handle_post(request)
+        else:
+            return domain_to_extension[host].handle_get(request)
+
+    if request.method == "POST":
+        return handle_proxy_post(path)
+    else:
+        return handle_proxy_get(path)
+
+def handle_proxy_get(path):
     url = request.url.replace("https://", "http://", 1)
     headers = {
         "Accept": request.headers.get("Accept"),
@@ -45,12 +61,7 @@ def get(path):
             ), resp.status_code
     return resp.content, resp.status_code
 
-@app.route("/", defaults={"path": ""}, methods=["POST"])
-@app.route("/<path:path>", methods=["POST"])
-def post(path):
-    """
-    Builds the request for the HTTP POST method
-    """
+def handle_proxy_post(path):
     url = request.url.replace("https://", "http://", 1)
     headers = {
         "Accept": request.headers.get("Accept"),
@@ -79,11 +90,6 @@ def post(path):
 
 @app.after_request
 def apply_caching(resp):
-    """
-    Modifies the response after the request has been built
-    """
-    # Workaround for retaining the Content-Type header for f.e. downloading binary files.
-    # There may be a more elegant way to do this.
     try:
         resp.headers["Content-Type"] = g.content_type
     except:

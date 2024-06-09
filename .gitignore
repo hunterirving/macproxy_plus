@@ -4,5 +4,7 @@ __pycache__/
 
 # Distribution / packaging
 venv/
-
 current
+
+# Enabled extensions / api keys
+config.py
