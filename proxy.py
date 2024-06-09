@@ -3,7 +3,6 @@ import requests
 import argparse
 from flask import Flask, request, session, g, abort
 from html_utils import transcode_html
-import config
 
 app = Flask(__name__)
 session = requests.Session()
@@ -11,10 +10,18 @@ session = requests.Session()
 HTTP_ERRORS = (403, 404, 500, 503, 504)
 ERROR_HEADER = "[[Macproxy Encountered an Error]]"
 
+# Try to import config.py and set configurations
+try:
+    import config
+    ENABLED_EXTENSIONS = config.ENABLED_EXTENSIONS
+except ModuleNotFoundError:
+    print("config.py not found, running without extensions")
+    ENABLED_EXTENSIONS = []
+
 # Load extensions
 extensions = {}
 domain_to_extension = {}
-for ext in config.ENABLED_EXTENSIONS:
+for ext in ENABLED_EXTENSIONS:
     module = __import__(f"extensions.{ext}.{ext}", fromlist=[''])
     extensions[ext] = module
     domain_to_extension[module.DOMAIN] = module
