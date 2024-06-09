@@ -1,0 +1,7 @@
+# rename this file (config.py.template) as "config.py" to enable extensions
+
+open_ai_api_key = "YOUR_OPENAI_API_KEY_HERE"
+
+ENABLED_EXTENSIONS = [
+    "chatgpt"
+    ]
