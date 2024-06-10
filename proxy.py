@@ -10,12 +10,12 @@ session = requests.Session()
 HTTP_ERRORS = (403, 404, 500, 503, 504)
 ERROR_HEADER = "[[Macproxy Encountered an Error]]"
 
-# Try to import config.py and set configurations
+# Try to import config.py from the extensions folder and set configurations
 try:
-    import config
+    import extensions.config as config
     ENABLED_EXTENSIONS = config.ENABLED_EXTENSIONS
 except ModuleNotFoundError:
-    print("config.py not found, running without extensions")
+    print("config.py not found in extensions folder, running without extensions")
     ENABLED_EXTENSIONS = []
 
 # Load extensions

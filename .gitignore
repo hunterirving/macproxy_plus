@@ -6,5 +6,5 @@ __pycache__/
 venv/
 current
 
-# Enabled extensions / api keys
-config.py
+# Ignore extensions configuration
+extensions/config.py

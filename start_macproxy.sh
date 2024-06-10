@@ -52,7 +52,7 @@ fi
 source venv/bin/activate
 
 # Install extension-specific requirements
-for ext in $(python3 -c "import config; print(' '.join(config.ENABLED_EXTENSIONS))"); do
+for ext in $(python3 -c "import extensions.config as config; print(' '.join(config.ENABLED_EXTENSIONS))"); do
   if test -e "extensions/$ext/requirements.txt"; then
     echo "Installing requirements for extension $ext"
     pip3 install -r "extensions/$ext/requirements.txt" -q

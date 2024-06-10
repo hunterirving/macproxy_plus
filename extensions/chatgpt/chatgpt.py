@@ -1,6 +1,6 @@
 from flask import request, render_template_string
 from openai import OpenAI
-import config
+import extensions.config as config
 
 # Initialize the OpenAI client with your API key
 client = OpenAI(api_key=config.open_ai_api_key)
