@@ -1,6 +1,7 @@
 from flask import request, render_template_string
 from openai import OpenAI
 import extensions.config as config
+from html_utils import transcode_html
 
 # Initialize the OpenAI client with your API key
 client = OpenAI(api_key=config.open_ai_api_key)
@@ -58,13 +59,13 @@ HTML_TEMPLATE = """
 </html>
 """
 
-def handle_get(req):
-    return web_shell(req)
+def handle_get(request):
+    return chat_interface(request)
 
-def handle_post(req):
-    return web_shell(req)
+def handle_post(request):
+    return chat_interface(request)
 
-def web_shell(req):
+def chat_interface(request):
     global messages, selected_model, previous_model
     output = ""
 
@@ -89,7 +90,10 @@ def web_shell(req):
         )
         response_body = response.choices[0].message.content
         messages.append({"role": "system", "content": response_body})
-        
+
+        # Sanitize the response body
+        response_body = transcode_html(response_body, "html5", False)
+
     for msg in reversed(messages[-10:]):
         if msg['role'] == 'user':
             output += f"<b>User:</b> {msg['content']}<br>"
