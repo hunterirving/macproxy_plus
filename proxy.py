@@ -10,7 +10,7 @@ session = requests.Session()
 HTTP_ERRORS = (403, 404, 500, 503, 504)
 ERROR_HEADER = "[[Macproxy Encountered an Error]]"
 
-# Try to import config.py from the extensions folder and set configurations
+# Try to import config.py from the extensions folder and enable extensions
 try:
     import extensions.config as config
     ENABLED_EXTENSIONS = config.ENABLED_EXTENSIONS

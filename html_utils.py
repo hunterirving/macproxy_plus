@@ -38,7 +38,7 @@ CONVERSION_TABLE = {
 	"&dagger;": b"*",
 	"‡": b"**",
 	"&Dagger;": b"**",
-	"•": b"*",
+	"•": b"-",
 	"&bull;": b"*",
 	"…": b".",
 	"&hellip;": b".",
