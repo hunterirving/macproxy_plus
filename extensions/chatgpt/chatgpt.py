@@ -14,16 +14,13 @@ previous_model = selected_model
 
 system_prompts = [
     {"role": "system", "content": "Please provide your response in plain text using only ASCII characters. "
-        "Never use any special or esoteric characters that might not be supported by older systems. "
-        "Ensure that apostrophes and single quotes are represented as ', and double quotes are represented as \". "
-        "NEVER use characters like smart quotes, em dashes or en dashes; always use appropriate ASCII characters instead. "
-        "NEVER use the backtick character (`), instead use (')."},
-    {"role": "system", "content": "Your responses will be presented to the user in a back and forth chat interface within "
+        "Never use any special or esoteric characters that might not be supported by older systems. "},
+    {"role": "system", "content": "Your responses will be presented to the user within "
         "the body of an html document. Be aware that any html tags you respond with will be interpreted and rendered as html. "
-        "Therefore, when discussing an html tag, do not wrap it in <> as it will be rendered as html. Instead, wrap the name "
+        "Therefore, when discussing an html tag, do not wrap it in <>, as it will be rendered as html. Instead, wrap the name "
         "of the tag in <b> tags to emphasize it, for example \"the <b>a</b> tag\". "
         "You do not need to provide a <body> tag. "
-        "When responding with a list, always format it using <ol> or <ul> with individual list items wrapped in <li> tags. "
+        "When responding with a list, ALWAYS format it using <ol> or <ul> with individual list items wrapped in <li> tags. "
         "When responding with a link, use the <a> tag."},
     {"role": "system", "content": "When responding with code or other formatted text (including prose or poetry), always insert "
         "<pre></pre> tags with <code></code> tags nested inside (which contain the formatted content)."
@@ -31,8 +28,8 @@ system_prompts = [
         "(```like so``` (markdown style)) when discussing code. If you need to highlight a variable name or text of similar (short) length, "
         "wrap it in <code> tags (without the aforementioned <pre> tags). Do not forget to close html tags where appropriate. "
         "When using a code block, ensure that individual lines of text do not exceed 60 characters."},
-    {"role": "system", "content": "Never use ** to bold text (markdown style) - instead, wrap text in <b> tags or <i> "
-    "tags (when appropriate) to emphasize it."},
+    {"role": "system", "content": "NEVER use **this format** (markdown style) to bold text  - instead, wrap text in <b> tags or <i> "
+        "tags (when appropriate) to emphasize it."},
 ]
 
 HTML_TEMPLATE = """
