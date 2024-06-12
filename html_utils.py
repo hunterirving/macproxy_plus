@@ -16,19 +16,19 @@ CONVERSION_TABLE = {
 	"&lsquo;": b"'",
 	"’": b"'",
 	"&rsquo;": b"'",
-	"“": b"''",  # Left double quote
+	"“": b"''",
 	"&ldquo;": b"''",
-	"”": b"''",  # Right double quote
+	"”": b"''",
 	"&rdquo;": b"''",
-	"–": b"-",   # En dash
+	"–": b"-",
 	"&ndash;": b"-",
-	"—": b"--",  # Em dash
+	"—": b"--",
 	"&mdash;": b"--",
-	"―": b"-",   # Horizontal bar
+	"―": b"-",
 	"&horbar;": b"-",
 
 	# Punctuation and special characters
-	"·": b"-",   # Middle dot
+	"·": b"-",
 	"&middot;": b"-",
 	"‚": b",",
 	"&sbquo;": b",",
@@ -40,8 +40,8 @@ CONVERSION_TABLE = {
 	"&Dagger;": b"**",
 	"•": b"-",
 	"&bull;": b"*",
-	"…": b".",
-	"&hellip;": b".",
+	"…": b"...",
+	"&hellip;": b"...",
 
 	# Math symbols
 	"±": b"+/-",
@@ -62,65 +62,65 @@ CONVERSION_TABLE = {
 	"&trade;": b"(tm)",
 
 	# Arrows
-	"←": b"<",   # Left arrow
+	"←": b"<",
 	"&larr;": b"<",
-	"→": b">",   # Right arrow
+	"→": b">",
 	"&rarr;": b">",
-	"↑": b"^",    # Up arrow
+	"↑": b"^",
 	"&uarr;": b"^",
-	"↓": b"v",    # Down arrow
+	"↓": b"v",
 	"&darr;": b"v",
-	"↖": b"\\",   # Diagonal arrows
+	"↖": b"\\",
 	"&nwarr;": b"\\",
-	"↗": b"/",    # Diagonal arrows
+	"↗": b"/",
 	"&nearr;": b"/",
-	"↘": b"\\",   # Diagonal arrows
+	"↘": b"\\",
 	"&searr;": b"\\",
-	"↙": b"/",    # Diagonal arrows
+	"↙": b"/",
 	"&swarr;": b"/",
 
 	# Box-drawing characters
-	"─": b"-",  # Box drawings light horizontal
+	"─": b"-",
 	"&boxh;": b"-",
-	"│": b"|",  # Box drawings light vertical
+	"│": b"|",
 	"&boxv;": b"|",
-	"┌": b"+",  # Box drawings light down and right
+	"┌": b"+",
 	"&boxdr;": b"+",
-	"┐": b"+",  # Box drawings light down and left
+	"┐": b"+",
 	"&boxdl;": b"+",
-	"└": b"+",  # Box drawings light up and right
+	"└": b"+",
 	"&boxur;": b"+",
-	"┘": b"+",  # Box drawings light up and left
+	"┘": b"+",
 	"&boxul;": b"+",
-	"├": b"+",  # Box drawings light vertical and right
+	"├": b"+",
 	"&boxvr;": b"+",
-	"┤": b"+",  # Box drawings light vertical and left
+	"┤": b"+",
 	"&boxvl;": b"+",
-	"┬": b"+",  # Box drawings light down and horizontal
+	"┬": b"+",
 	"&boxhd;": b"+",
-	"┴": b"+",  # Box drawings light up and horizontal
+	"┴": b"+",
 	"&boxhu;": b"+",
-	"┼": b"+",  # Box drawings light vertical and horizontal
+	"┼": b"+",
 	"&boxvh;": b"+",
 
 
 	# Block elements
-    "█": b"#",  # Full block
-    "&block;": b"#",
-    "▌": b"|",  # Left half block
-    "&lhblk;": b"|",
-    "▐": b"|",  # Right half block
-    "&rhblk;": b"|",
-    "▀": b"-",  # Upper half block
-    "&uhblk;": b"-",
-    "▄": b"_",  # Lower half block
-    "&lhblk;": b"_",
+	"█": b"#",
+	"&block;": b"#",
+	"▌": b"|",
+	"&lhblk;": b"|",
+	"▐": b"|",
+	"&rhblk;": b"|",
+	"▀": b"-",
+	"&uhblk;": b"-",
+	"▄": b"_",
+	"&lhblk;": b"_",
 
-    # Downward triangle
-    "▾": b"v",
-    "&dtrif;": b"v",
-    "&#x25BE;": b"v",  # Hexadecimal entity
-    "&#9662;": b"v",  # Decimal entity
+	# Downward triangle
+	"▾": b"v",
+	"&dtrif;": b"v",
+	"&#x25BE;": b"v",
+	"&#9662;": b"v",
 
 	# Musical note
 	"♫": b"",
@@ -157,6 +157,11 @@ def transcode_html(html, html_formatter, disable_char_conversion):
 		except:
 			print("Malformed img tag: " + str(tag))
 
-	html = soup.prettify(formatter=html_formatter)
-    
-	return html
+	html = soup.prettify(formatter=html_formatter).encode("utf-8")
+
+	if not disable_char_conversion:
+		# Replace characters and entities based on the conversion table
+		for key, replacement in CONVERSION_TABLE.items():
+			html = html.replace(key.encode("utf-8"), replacement)
+
+	return html.decode("utf-8")

@@ -21,7 +21,7 @@ system_prompts = [
         "of the tag in <b> tags to emphasize it, for example \"the <b>a</b> tag\". "
         "You do not need to provide a <body> tag. "
         "When responding with a list, ALWAYS format it using <ol> or <ul> with individual list items wrapped in <li> tags. "
-        "When responding with a link, use the <a> tag."},
+        "When responding with a link,  the <a> tag."},
     {"role": "system", "content": "When responding with code or other formatted text (including prose or poetry), always insert "
         "<pre></pre> tags with <code></code> tags nested inside (which contain the formatted content)."
         "If the user asks you to respond 'in a code block', this is what they mean. NEVER use three backticks "

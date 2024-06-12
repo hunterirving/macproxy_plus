@@ -6,7 +6,8 @@
 
 # Uncomment lines to enable desired extensions:
 ENABLED_EXTENSIONS = [
-    #"chatgpt",
-    #"wiby",
-    #"npr"
+	#"chatgpt",
+	#"wiby",
+	#"npr",
+	#hackaday
 ]

@@ -8,18 +8,18 @@ To enable extensions, follow these steps:
 
 1. In the ```extensions``` directory, rename ```config.py.template``` to ```config.py``` :
 
-    ```shell
-    mv extensions/config.py.template extensions/config.py
-    ```
+	```shell
+	mv extensions/config.py.template extensions/config.py
+	```
 
 2. In ```config.py```, enable/disable extensions by uncommenting/commenting lines in the ```ENABLED_EXTENSIONS``` list:
 
-    ```python
-    ENABLED_EXTENSIONS = [
-        #disabled_extension,
-        "enabled_extension"
-        ]
-    ```
+	```python
+	ENABLED_EXTENSIONS = [
+		#disabled_extension,
+		"enabled_extension"
+		]
+	```
 
 ### Running Macproxy with Extensions
 
@@ -39,13 +39,23 @@ To enable the ChatGPT extension, open ```extensions/config.py```, uncomment the 
 open_ai_api_key = "YOUR_OPENAI_API_KEY_HERE"
 
 ENABLED_EXTENSIONS = [
-    "chatgpt"
+	"chatgpt"
 ]
 ```
 
 Once enabled, Macproxy will reroute requests to ```http://chatgpt.com``` to this inteface.
 
 <img src="readme_images/macintosh_plus.jpg">
+
+### Other Extensions
+
+#### wiby.me
+Fixes an issue where clicking "surprise me..." would not redirect users to the final destination.
+
+#### npr.org
+Serves articles from the text-only version of the site (```text.npr.org```) and transforms relative urls into absolute urls for compatibility with MacWeb 2.0.
+
+<hr>
 
 ## Macproxy
 
