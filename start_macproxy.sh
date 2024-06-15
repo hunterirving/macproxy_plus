@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -e
-# set -x # Uncomment to Debug
+#set -x # Uncomment to Debug
 
 # verify packages installed
 ERROR=0
