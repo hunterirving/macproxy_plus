@@ -49,11 +49,14 @@ Once enabled, Macproxy will reroute requests to ```http://chatgpt.com``` to this
 
 ### Other Extensions
 
-#### wiby.me
-Fixes an issue where clicking "surprise me..." would not redirect users to the final destination.
+#### hackaday.com
+Serves a paired-down, text-only version of the site, complete with articles, comments, and search functionality.
 
 #### npr.org
 Serves articles from the text-only version of the site (```text.npr.org```) and transforms relative urls into absolute urls for compatibility with MacWeb 2.0.
+
+#### wiby.me
+Fixes an issue where clicking "surprise me..." would not redirect users to the final destination.
 
 <hr>
 
@@ -63,7 +66,7 @@ A simple HTTP proxy script for putting early computers on the Web. Despite its n
 
 The proxy.py script runs a Flask server that takes all requests and proxies them, using html_utils.py to strip tags that are incompatible with, or pulls in contents that aren't parsable by old browsers such as Netscape 4 or MacWeb.
 
-The proxy server listens to port 5000 by default, but the port number can be changed using a command line parameter.
+The proxy server listens to port 5001 by default, but the port number can be changed using a command line parameter.
 
 ## Requirements
 Python3 for running the script, venv if you want to use the virtual environment, or pip if you want to install libraries manually.
