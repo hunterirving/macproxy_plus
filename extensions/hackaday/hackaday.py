@@ -2,6 +2,7 @@ from flask import request, redirect, render_template_string
 import requests
 from bs4 import BeautifulSoup
 from html_utils import transcode_html
+from datetime import datetime
 
 DOMAIN = "hackaday.com"
 
@@ -53,6 +54,21 @@ def process_html(content):
 				meta_authors_span.append(child)
 				meta_authors_span.append(soup.new_tag('br'))
 		meta_authors_list.replace_with(meta_authors_span)
+
+	# Replace <h1> tags with class "entry-title" with <b> tags, preserving their inner contents and adding <br><br>
+	entry_titles = soup.find_all('h1', class_='entry-title')
+	for h1 in entry_titles:
+		b_tag = soup.new_tag('b')
+		for content in h1.contents:
+			b_tag.append(content)
+		b_tag.append(soup.new_tag('br'))
+		b_tag.append(soup.new_tag('br'))
+		h1.replace_with(b_tag)
+	
+	# Remove all <figure> tags
+	figures = soup.find_all('figure')
+	for figure in figures:
+		figure.decompose()
 
 	# Add <br> directly after the span with class="entry-date"
 	entry_date_span = soup.find('span', class_='entry-date')
@@ -283,7 +299,8 @@ def process_html(content):
 
 		# Create the copyright div
 		copyright_div = soup.new_tag('div')
-		copyright_div.string = "Copyright © 2024 | Hackaday, Hack A Day, and the Skull and Wrenches Logo are Trademarks of Hackaday.com"
+		current_year = datetime.now().year
+		copyright_div.string = f"Copyright © {current_year} | Hackaday, Hack A Day, and the Skull and Wrenches Logo are Trademarks of Hackaday.com"
 		copyright_p = soup.new_tag('p')
 		copyright_p.append(copyright_div)
 
@@ -350,37 +367,6 @@ def process_html(content):
 		if any(cls.startswith('wp-image-') for cls in img.get('class', [])):
 			img.decompose()
 
-	
-	# Find all comment lists
-	comment_lists = soup.find_all('ol', class_='comment-list')
-	stack = comment_lists[:]  # Initialize stack with all top-level comment lists
-
-	while stack:
-		current_list = stack.pop()
-
-		for li in current_list.find_all('li', recursive=False):
-			# Find child <ol> within the <li>
-			child_ol = li.find('ol')
-
-			if child_ol:
-				# Insert <br> before the child <ol>
-				child_ol.insert_before(soup.new_tag('br'))
-				# Add the child <ol> to the stack to be processed
-				stack.append(child_ol)
-			else:
-				# Check if the next sibling exists and does not contain an <ol>
-				next_sibling = li.find_next_sibling('li', recursive=False)
-				if next_sibling:
-					if not next_sibling.find('ol'):
-						# Insert <br> at the end of the <li> if the next sibling does not contain an <ol>
-						li.append(soup.new_tag('br'))
-						# Insert an additional <br> to maintain spacing between sibling <li> elements
-						li.append(soup.new_tag('br'))
-				else:
-					# If there is no next sibling, just add a single <br>
-					li.append(soup.new_tag('br'))
-					li.append(soup.new_tag('br'))
-
 	# Replace <header> tag with id="masthead" with ascii art version
 	masthead = soup.find('header', id='masthead')
 	if masthead:
@@ -390,13 +376,17 @@ def process_html(content):
   / // /__ _____/ /__  ___ _  / _ \___ ___ __
  / _  / _ `/ __/  '_/ / _ `/ / // / _ `/ // /
 /_//_/\_,_/\__/_/\_\  \_,_/ /____/\_,_/\_, / 
-retro edition                         /___/ 
+fresh hacks every day                 /___/
+<br>
 </pre>
 """
 		new_header = BeautifulSoup(ascii_art, 'html.parser')
 		masthead.replace_with(new_header)
 
-	# Ensure changes are reflected
+	# Add <br> after each comment
+	add_br_after_comments(soup)
+
+	# Convert problem characters
 	updated_html = str(soup)
 	content = transcode_html(updated_html, "html5", False)
 	return content
@@ -430,3 +420,21 @@ def handle_request(req):
 		return handle_get(req)
 	else:
 		return "Not Found", 404
+
+def add_br_after_comments(soup):
+	def process_ol(ol):
+		children = ol.find_all('li', recursive=False)
+		for index, li in enumerate(children):
+			inner_ol = li.find('ol', recursive=False)
+			if inner_ol:
+				# Add <br> before the inner ol
+				inner_ol.insert_before(soup.new_tag('br'))
+				process_ol(inner_ol)
+			else:
+				# Add <br> after the current li unless it is the last li
+				if index != len(children) - 1:
+					li.insert_after(soup.new_tag('br'))
+	
+	comment_lists = soup.find_all('ol', class_='comment-list')
+	for comment_list in comment_lists:
+		process_ol(comment_list)
