@@ -1,4 +1,5 @@
 from bs4 import BeautifulSoup
+import re
 
 CONVERSION_TABLE = {
 	# Currency symbols
@@ -157,7 +158,17 @@ def transcode_html(html, html_formatter, disable_char_conversion):
 		except:
 			print("Malformed img tag: " + str(tag))
 
+	# Prettify the HTML
 	html = soup.prettify(formatter=html_formatter).encode("utf-8")
+
+	# Convert to string for manipulation
+	html_str = html.decode('utf-8')
+
+	# Strip whitespace from inner text of <a> tags
+	html_str = re.sub(r'(<a [^>]*>)(\s+)([^<]*)(\s+)(</a>)', lambda match: f'{match.group(1)}{match.group(3).strip()}{match.group(5)}', html_str)
+
+	# Convert back to bytes
+	html = html_str.encode('utf-8')
 
 	if not disable_char_conversion:
 		# Replace characters and entities based on the conversion table
