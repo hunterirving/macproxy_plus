@@ -8,3 +8,6 @@ current
 
 # Ignore extensions configuration
 extensions/config.py
+
+# For testing (to be removed or incorporated later)
+localtest.py
