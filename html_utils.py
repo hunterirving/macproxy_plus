@@ -165,8 +165,8 @@ def transcode_html(html, html_formatter, disable_char_conversion):
 	html_str = html.decode('utf-8')
 
 	# Strip whitespace from inner text of <a> tags
-	html_str = re.sub(r'(<a [^>]*>)(\s+)([^<]*)(\s+)(</a>)', lambda match: f'{match.group(1)}{match.group(3).strip()}{match.group(5)}', html_str)
-
+	html_str = re.sub(r'(<a [^>]*>)(\s*)([^<]*?)(\s*)(</a>)', lambda match: f'{match.group(1)}{match.group(3).strip()}{match.group(5)}', html_str)
+	
 	# Convert back to bytes
 	html = html_str.encode('utf-8')
 
