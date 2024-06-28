@@ -34,8 +34,10 @@ def process_html(content, path):
 		nav_links_div.wrap(center_tag)
 		# Insert a <br> after the nav-links div
 		nav_links_div.insert_after(soup.new_tag('br'))
-		# Insert an <hr> after the nav-links div
-		nav_links_div.insert_after(soup.new_tag('hr'))
+		# Insert an <hr> before the nav-links div
+		nav_links_div.insert_before(soup.new_tag('hr'))
+		# Insert a <br> after the nav-links div
+		nav_links_div.insert_after(soup.new_tag('br'))
 
 		# Remove <a> tags with specific hrefs within the nav-links div
 		hrefs_to_remove = ["/360tour", "https://meet.hacksburg.org/OpenGroupMeeting"]
@@ -196,49 +198,60 @@ def handle_get(req):
 	try:
 		response = requests.get(url)
 		processed_content = process_html(response.text, req.path)
-		# Retrieve and process JSON data
-		json_url = "https://hacksburg.org/posts.json"
-		json_response = requests.get(json_url)
-		if json_response.status_code == 200:
-			data = json_response.json()
 
-			# Get current datetime
-			now = datetime.now()
+		# Only append posts for the homepage
+		if req.path == "/":
+			# Retrieve and process JSON data
+			json_url = "https://hacksburg.org/posts.json"
+			json_response = requests.get(json_url)
+			if json_response.status_code == 200:
+				data = json_response.json()
 
-			# Filter and sort posts
-			future_posts = []
-			for post in data["posts"]:
-				event_datetime = datetime.strptime(f"{post['date']} {post['start_time']}", "%Y-%m-%d %I:%M%p")
-				if event_datetime > now:
-					future_posts.append(post)
+				# Get current datetime
+				now = datetime.now()
 
-			# Sort posts by date and start_time in ascending order
-			future_posts.sort(key=lambda x: datetime.strptime(f"{x['date']} {x['start_time']}", "%Y-%m-%d %I:%M%p"))
+				# Filter and sort posts
+				future_posts = []
+				for post in data["posts"]:
+					event_datetime = datetime.strptime(f"{post['date']} {post['start_time']}", "%Y-%m-%d %I:%M%p")
+					if event_datetime > now:
+						future_posts.append(post)
 
-			# Prepare HTML for each future post
-			html_to_insert = ""
-			for post in future_posts:
-				subtitle = f"<span>{post['subtitle']}</span><br><br>" if post['subtitle'] else ""
-				description = f"<span>{post['description']}</span><br><br>"
-				event_time = f"<p><b>Time</b>: {event_datetime.strftime('%A, %B %dth')} from {post['start_time']} - {post['end_time']}</p>"
-				event_place = "<p><b>Place</b>: In person at Hacksburg; 1872 Pratt Drive Suite 1620, Blacksburg, VA</p>"
-				event_cost = f"<p><b>Cost</b>: ${post['member_price']} for members, ${post['non_member_price']} for non-members</p>"
-				html_to_insert += f"<b>{post['title']}</b><br>{subtitle}{description}{event_time}{event_place}{event_cost}<br>"
+				# Sort posts by date and start_time in ascending order
+				future_posts.sort(key=lambda x: datetime.strptime(f"{x['date']} {x['start_time']}", "%Y-%m-%d %I:%M%p"))
 
-			# Insert generated HTML into bulletin-board div
-			soup = BeautifulSoup(processed_content, 'html.parser')
-			bulletin_board_div = soup.find('div', id='bulletin-board')
-			if bulletin_board_div:
-				bulletin_board_div.append(html_to_insert)
+				# Prepare HTML for each future post
+				html_to_insert = "<br>"
+				for post in future_posts:
+					header_date = f"<span>{event_datetime.strftime('%A, %B %dth')} from {post['start_time']} - {post['end_time']}</span>"
+					description = f"<span>{post['description']}</span><br><br>"
+					event_time = f"<span><b>Time</b>: {event_datetime.strftime('%A, %B %dth')} from {post['start_time']} - {post['end_time']}</span><br>"
+					event_place = "<span><b>Place</b>: In person at Hacksburg; 1872 Pratt Drive Suite 1620, Blacksburg, VA</span><br>"
+					event_cost = f"<span><b>Cost</b>: ${post['member_price']} for members, ${post['non_member_price']} for non-members</span><br>"
+					html_to_insert += f"<br><hr><br><b>{post['title']}</b><br>{header_date}{description}{event_time}{event_place}{event_cost}"
 
-				# Insert <hr> at the end of bulletin-board div
-				bulletin_board_div.append(soup.new_tag('hr'))
+				# Insert generated HTML into bulletin-board div
+				soup = BeautifulSoup(processed_content, 'html.parser')
+				bulletin_board_div = soup.find('div', id='bulletin-board')
+				if bulletin_board_div:
+					# Create a new BeautifulSoup object for the new posts
+					html_soup = BeautifulSoup(html_to_insert, 'html.parser')
+					bulletin_board_div.append(html_soup)
 
-			return str(soup), response.status_code
+				# Decompose the div with id="carousel-nav"
+				carousel_nav_div = soup.find('div', id='carousel-nav')
+				if carousel_nav_div:
+					carousel_nav_div.decompose()
+
+				return str(soup), response.status_code
+			else:
+				return f"Error: Unable to fetch posts.json - Status code {json_response.status_code}", 500
 		else:
-			return f"Error: Unable to fetch posts.json - Status code {json_response.status_code}", 500
+			print(f"Not appending posts, path is: {req.path}")  # Debug statement
+			return processed_content, response.status_code
 
 	except Exception as e:
+		print(f"Error occurred: {str(e)}")  # Debug statement
 		return f"Error: {str(e)}", 500
 
 def handle_post(req):

@@ -26,7 +26,7 @@ for ext in ENABLED_EXTENSIONS:
 	extensions[ext] = module
 	domain_to_extension[module.DOMAIN] = module
 
-@app.route("/", defaults={"path": ""}, methods=["GET", "POST"])
+@app.route("/", defaults={"path": "/"}, methods=["GET", "POST"])
 @app.route("/<path:path>", methods=["GET", "POST"])
 def handle_request(path):
 	host = request.host.split(':')[0]  # Remove port if present
@@ -54,11 +54,15 @@ def handle_request(path):
 	if "content-type" in resp.headers.keys():
 		g.content_type = resp.headers["Content-Type"]
 	if resp.headers["Content-Type"].startswith("text/html"):
-		# If an extension is present, process the content with the extension first
+		# If an extension is present, handle the request with the extension first
 		if extension:
-			processed_content = extension.process_html(resp.text, request.path)
+			processed_content, status_code = extension.handle_request(request)
 		else:
-			processed_content = resp.text
+			processed_content, status_code = resp.text, resp.status_code
+
+		# Ensure we use the response status code from the extension or the original response
+		if status_code in HTTP_ERRORS:
+			return abort(status_code)
 
 		# Transcode HTML after extension processing
 		transcoded_content = transcode_html(
