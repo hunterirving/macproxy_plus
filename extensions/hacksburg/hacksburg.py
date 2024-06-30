@@ -190,7 +190,6 @@ def process_html(content, path):
 			for post in posts[1:]:
 				post.decompose()
 
-	# Convert problem characters
 	return str(soup)
 
 def handle_get(req):
@@ -223,12 +222,45 @@ def handle_get(req):
 				# Prepare HTML for each future post
 				html_to_insert = "<br>"
 				for post in future_posts:
-					header_date = f"<span>{event_datetime.strftime('%A, %B %dth')} from {post['start_time']} - {post['end_time']}</span>"
+					title_and_subtitle = f"<b>{post['title']}</b>"
+					if post['subtitle'].strip():  # Check if subtitle is not empty and add it
+						title_and_subtitle += f"<br><span>{post['subtitle']}</span>"
+
 					description = f"<span>{post['description']}</span><br><br>"
-					event_time = f"<span><b>Time</b>: {event_datetime.strftime('%A, %B %dth')} from {post['start_time']} - {post['end_time']}</span><br>"
-					event_place = "<span><b>Place</b>: In person at Hacksburg; 1872 Pratt Drive Suite 1620, Blacksburg, VA</span><br>"
-					event_cost = f"<span><b>Cost</b>: ${post['member_price']} for members, ${post['non_member_price']} for non-members</span><br>"
-					html_to_insert += f"<br><hr><br><b>{post['title']}</b><br>{header_date}{description}{event_time}{event_place}{event_cost}"
+					
+					# Normalize time format
+					start_time = datetime.strptime(post['start_time'], '%I:%M%p').strftime('%-I:%M%p')
+					end_time = datetime.strptime(post['end_time'], '%I:%M%p').strftime('%-I:%M%p')
+					if start_time[-2:] != end_time[-2:]:
+						time_string = f"{start_time} - {end_time}"
+					else:
+						time_string = f"{start_time[:-2]} - {end_time}"
+					event_date = event_datetime.strftime('%A, %B %d')
+					event_time = f"<span><b>Time</b>: {event_date} from {time_string}</span><br>"
+					
+					# Generate location string
+					if post['offsite_location']:
+						event_place = f"<span><b>Place</b>: {post['offsite_location']}</span><br>"
+					elif post['offered_in_person'] and post['offered_online']:
+						event_place = '<span><b>Place</b>: Online and in person at Hacksburg; 1872 Pratt Drive Suite 1620</span><br>'
+					elif post['offered_in_person']:
+						event_place = '<span><b>Place</b>: In person at Hacksburg; 1872 Pratt Drive Suite 1620</span><br>'
+					elif post['offered_online']:
+						event_place = '<span><b>Place</b>: Online only</span><br>'
+					else:
+						event_place = ""
+
+					# Generate cost description
+					if post['member_price'] == 0 and post['non_member_price'] == 0:
+						event_cost = '<span><b>Cost</b>: Free!</span><br>'
+					elif post['member_price'] == 0:
+						event_cost = f'<span><b>Cost</b>: Free for Hacksburg members; ${post["non_member_price"]} for non-members</span><br>'
+					elif post['member_price'] == post['non_member_price']:
+						event_cost = f'<span><b>Cost</b>: ${post["non_member_price"]}.</span><br>'
+					else:
+						event_cost = f'<span><b>Cost</b>: ${post["member_price"]} for Hacksburg members; ${post["non_member_price"]} for non-members</span><br>'
+
+					html_to_insert += f"<br><hr><br>{title_and_subtitle}<br>{description}{event_time}{event_place}{event_cost}"
 
 				# Insert generated HTML into bulletin-board div
 				soup = BeautifulSoup(processed_content, 'html.parser')
@@ -247,11 +279,9 @@ def handle_get(req):
 			else:
 				return f"Error: Unable to fetch posts.json - Status code {json_response.status_code}", 500
 		else:
-			print(f"Not appending posts, path is: {req.path}")  # Debug statement
 			return processed_content, response.status_code
 
 	except Exception as e:
-		print(f"Error occurred: {str(e)}")  # Debug statement
 		return f"Error: {str(e)}", 500
 
 def handle_post(req):

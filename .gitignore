@@ -12,3 +12,4 @@ extensions/config.py
 # For testing (to be removed or incorporated later)
 localtest.py
 start_localtest.sh
+html_utils_local_test.py
