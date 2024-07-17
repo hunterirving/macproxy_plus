@@ -51,6 +51,7 @@ CONVERSION_TABLE = {
 	"&asymp;": b"~",
 	"≠": b"!=",
 	"&ne;": b"!=",
+	"&times;": b"x",
 
 	# Miscellaneous symbols
 	"°": b"*",
