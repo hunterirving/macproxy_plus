@@ -227,15 +227,19 @@ def handle_get(req):
 						title_and_subtitle += f"<br><span>{post['subtitle']}</span>"
 
 					description = f"<span>{post['description']}</span><br><br>"
+					event_datetime = datetime.strptime(f"{post['date']} {post['start_time']}", "%Y-%m-%d %I:%M%p")
 					
 					# Normalize time format
-					start_time = datetime.strptime(post['start_time'], '%I:%M%p').strftime('%-I:%M%p')
+					start_time = event_datetime.strftime('%-I:%M%p')
 					end_time = datetime.strptime(post['end_time'], '%I:%M%p').strftime('%-I:%M%p')
 					if start_time[-2:] != end_time[-2:]:
 						time_string = f"{start_time} - {end_time}"
 					else:
 						time_string = f"{start_time[:-2]} - {end_time}"
-					event_date = event_datetime.strftime('%A, %B %d')
+					
+					# Format the date without leading zero for single-digit days
+					event_date = event_datetime.strftime('%A, %B ') + str(event_datetime.day)
+					
 					event_time = f"<span><b>Time</b>: {event_date} from {time_string}</span><br>"
 					
 					# Generate location string
