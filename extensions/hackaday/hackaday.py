@@ -388,8 +388,7 @@ fresh hacks every day                 /___/
 
 	# Convert problem characters
 	updated_html = str(soup)
-	content = transcode_html(updated_html, "html5", False)
-	return content
+	return updated_html
 
 def handle_get(req):
 	url = f"https://hackaday.com{req.path}"

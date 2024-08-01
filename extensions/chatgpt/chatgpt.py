@@ -56,11 +56,20 @@ HTML_TEMPLATE = """
 </html>
 """
 
+def handle_request(req):
+    if req.method == 'POST':
+        content, status_code = handle_post(req)
+    elif req.method == 'GET':
+        content, status_code = handle_get(req)
+    else:
+        content, status_code = "Not Found", 404
+    return content, status_code
+
 def handle_get(request):
-    return chat_interface(request)
+    return chat_interface(request), 200
 
 def handle_post(request):
-    return chat_interface(request)
+    return chat_interface(request), 200
 
 def chat_interface(request):
     global messages, selected_model, previous_model
