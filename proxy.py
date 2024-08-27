@@ -1,8 +1,9 @@
 import os
 import requests
 import argparse
-from flask import Flask, request, session, g, abort
+from flask import Flask, request, session, g, abort, Response
 from html_utils import transcode_html
+from urllib.parse import urlparse
 
 app = Flask(__name__)
 session = requests.Session()
@@ -21,7 +22,9 @@ except ModuleNotFoundError:
 # Load extensions
 extensions = {}
 domain_to_extension = {}
+print('Enabled Extensions: ')
 for ext in ENABLED_EXTENSIONS:
+	print(ext)
 	module = __import__(f"extensions.{ext}.{ext}", fromlist=[''])
 	extensions[ext] = module
 	domain_to_extension[module.DOMAIN] = module
@@ -29,8 +32,32 @@ for ext in ENABLED_EXTENSIONS:
 @app.route("/", defaults={"path": "/"}, methods=["GET", "POST"])
 @app.route("/<path:path>", methods=["GET", "POST"])
 def handle_request(path):
-	host = request.host.split(':')[0]  # Remove port if present
-	extension = domain_to_extension.get(host)
+	parsed_url = urlparse(request.url)
+	host = parsed_url.netloc.split(':')[0]  # Remove port if present
+	
+	# Check if the host matches any of our extensions
+	matching_extension = None
+	for domain, extension in domain_to_extension.items():
+		if host.endswith(domain):
+			matching_extension = extension
+			break
+	
+	if matching_extension:
+		response = matching_extension.handle_request(request)
+		if isinstance(response, tuple):
+			content, status_code = response
+		elif isinstance(response, Response):
+			return response  # If it's already a Response object, return it directly
+		else:
+			content, status_code = response, 200  # Assume 200 if no status code provided
+		
+		if isinstance(content, str):  # Assuming HTML content is returned as a string
+			content = transcode_html(
+				content,
+				app.config["HTML_FORMATTER"],
+				app.config["DISABLE_CHAR_CONVERSION"],
+			)
+		return content, status_code
 
 	url = request.url.replace("https://", "http://", 1)
 	headers = {
@@ -54,19 +81,8 @@ def handle_request(path):
 	if "content-type" in resp.headers.keys():
 		g.content_type = resp.headers["Content-Type"]
 	if resp.headers["Content-Type"].startswith("text/html"):
-		# If an extension is present, handle the request with the extension first
-		if extension:
-			processed_content, status_code = extension.handle_request(request)
-		else:
-			processed_content, status_code = resp.text, resp.status_code
-
-		# Ensure we use the response status code from the extension or the original response
-		if status_code in HTTP_ERRORS:
-			return abort(status_code)
-
-		# Transcode HTML after extension processing
 		transcoded_content = transcode_html(
-			processed_content,
+			resp.text,
 			app.config["HTML_FORMATTER"],
 			app.config["DISABLE_CHAR_CONVERSION"],
 		)

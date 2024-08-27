@@ -62,6 +62,7 @@ CONVERSION_TABLE = {
 	"&Prime;": b"''",
 	"™": b"(tm)",
 	"&trade;": b"(tm)",
+	"é": b"e",
 
 	# Arrows
 	"←": b"<",
@@ -104,7 +105,6 @@ CONVERSION_TABLE = {
 	"&boxhu;": b"+",
 	"┼": b"+",
 	"&boxvh;": b"+",
-
 
 	# Block elements
 	"█": b"#",
