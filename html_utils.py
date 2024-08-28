@@ -63,6 +63,7 @@ CONVERSION_TABLE = {
 	"™": b"(tm)",
 	"&trade;": b"(tm)",
 	"é": b"e",
+	"ø": b"o",
 
 	# Arrows
 	"←": b"<",
