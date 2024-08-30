@@ -1,12 +1,15 @@
+''' WARNING ! This module is (perhaps appropriately) very hacky. Avert your gaze... '''
+
 from flask import request, redirect, render_template_string
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Comment
 from html_utils import transcode_html
 from datetime import datetime
+import re
 
 DOMAIN = "hackaday.com"
 
-def process_html(content):
+def process_html(content, url):
 	# Parse the HTML and remove specific tags
 	soup = BeautifulSoup(content, 'html.parser')
 
@@ -61,7 +64,6 @@ def process_html(content):
 		b_tag = soup.new_tag('b')
 		for content in h1.contents:
 			b_tag.append(content)
-		b_tag.append(soup.new_tag('br'))
 		b_tag.append(soup.new_tag('br'))
 		h1.replace_with(b_tag)
 	
@@ -312,7 +314,6 @@ def process_html(content):
 		body_tag.append(search_center_tag)
 		body_tag.append(copyright_center_tag)
 
-
 	# Transform <h2> within the "entry-intro" classed div to <b> and preserve its content
 	entry_intro_divs = soup.find_all('div', class_='entry-intro')
 	for entry_intro_div in entry_intro_divs:
@@ -366,6 +367,26 @@ def process_html(content):
 	for img in soup.find_all('img'):
 		if any(cls.startswith('wp-image-') for cls in img.get('class', [])):
 			img.decompose()
+	
+	# Find and remove all 'style' tags
+	for tag in soup.find_all('style'):
+		tag.decompose()
+
+	# Find and remove all 'script' tags
+	for tag in soup.find_all('script'):
+		tag.decompose()
+
+	# Find and remove all footer tags with class 'entry-footer'
+	for tag in soup.find_all('footer', class_='entry-footer'):
+		tag.decompose()
+	# Remove tags with inner content "Posts navigation"
+	for tag in soup.find_all(string="Posts navigation"):
+		tag.parent.decompose()
+
+	# Remove <a> tags with class "more-link" and text starting with "Continue reading"
+	for link in soup.find_all('a', class_='more-link'):
+		if link.text.strip().startswith("Continue reading"):
+			link.decompose()
 
 	# Replace <header> tag with id="masthead" with ascii art version
 	masthead = soup.find('header', id='masthead')
@@ -386,15 +407,128 @@ fresh hacks every day                 /___/
 	# Add <br> after each comment
 	add_br_after_comments(soup)
 
-	# Convert problem characters
+	# Process entry-content divs for blog listings and search results
+	if 'hackaday.com/blog/' in url or 'hackaday.com/author/' in url:
+		entry_content_divs = soup.find_all('div', class_='entry-content')
+		for div in entry_content_divs:
+			p_tags = div.find_all('p')
+			content = ''
+			for p in p_tags:
+				content += p.get_text() + ' '
+				p.decompose()
+			
+			content = content.strip()
+			if len(content) > 200:
+				last_space = content[:200].rfind(' ')
+				content = content[:last_space]
+			
+			div.string = content
+			
+			# Find the href in the sibling header
+			header = div.find_previous_sibling('header', class_='entry-header')
+			if header:
+				link = header.find('a', rel='bookmark')
+				if link and link.has_attr('href'):
+					href = link['href']
+					read_more_link = soup.new_tag('a', href=href)
+					read_more_link.string = '...read more'
+					div.append(read_more_link)
+					div.append(soup.new_tag('br'))
+					div.append(soup.new_tag('br'))
+					div.append(soup.new_tag('br'))
+
+		# Find all article tags with class "post"
+		articles = soup.find_all('article', class_='post')
+
+		for article in articles:
+			# Find the entry-meta div
+			entry_meta = article.find('div', class_='entry-meta')
+			
+			if entry_meta:
+				# Extract the date
+				date_span = entry_meta.find('span', class_='entry-date')
+				date = date_span.a.text if date_span and date_span.a else ''
+				
+				# Extract the author name and URL
+				author_link = entry_meta.find('a', rel='author')
+				if author_link:
+					author_name = author_link.text
+					author_url = author_link['href']
+					
+					# Create the new string
+					new_meta = f'By <a href="{author_url}">{author_name}</a> | {date}<br><br>'
+					
+					# Replace the content of entry-meta
+					entry_meta.clear()
+					entry_meta.append(BeautifulSoup(new_meta, 'html.parser'))
+		
+		# Find all div elements with class "entry-meta"
+		entry_meta_divs = soup.find_all('div', class_='entry-meta')
+
+		# Unwrap each div, keeping its contents in place
+		for div in entry_meta_divs:
+			div.unwrap()
+
+	# Find all headers with class 'entry-header'
+	headers = soup.find_all('header', class_='entry-header')
+
+	for header in headers:
+		# Find the <a> tag with rel="bookmark" within this header
+		bookmark_link = header.find('a', rel='bookmark')
+		
+		if bookmark_link:
+			# Unwrap the <a> tag, keeping its contents
+			bookmark_link.unwrap()
+
+	# Remove all meta tags
+	for meta in soup.find_all('meta'):
+		meta.decompose()
+
+	# Remove all HTML comments
+	for comment in soup.find_all(text=lambda text: isinstance(text, Comment)):
+		comment.extract()
+
+	# Remove all <link> tags
+	for link in soup.find_all('link'):
+		link.decompose()
+	
+	# Align nav-links at bottom of page
+	nav_links = soup.find('div', class_='nav-links')
+	if nav_links:
+		older_link_div = nav_links.find('div', class_='nav-previous')
+		newer_link_div = nav_links.find('div', class_='nav-next')
+		
+		older_html = f'<a href="{older_link_div.a["href"]}">← Older posts</a>' if older_link_div else ''
+		newer_html = f'<a href="{newer_link_div.a["href"]}">Newer posts →</a>' if newer_link_div else ''
+		
+		new_html = f'''
+		<table width="100%">
+		<tr>
+			<td align="left">{older_html}</td>
+			<td align="right">{newer_html}</td>
+		</tr>
+		</table>
+		'''
+		nav_links.replace_with(BeautifulSoup(new_html, 'html.parser'))
+
+	# Remove all class attributes to make page load faster
+	for tag in soup.find_all(class_=True):
+		del tag['class']
+	
+	# Remove empty lines between tags throughout the document
+	for element in soup(text=lambda text: isinstance(text, str) and not text.strip()):
+		element.extract()
+
+	# Convert problem characters and return
 	updated_html = str(soup)
+	print(updated_html)
 	return updated_html
 
 def handle_get(req):
 	url = f"https://hackaday.com{req.path}"
 	try:
 		response = requests.get(url)
-		processed_content = process_html(response.text)
+		processed_content = process_html(response.text, url)
 		return processed_content, response.status_code
 	except Exception as e:
 		return f"Error: {str(e)}", 500
@@ -406,7 +540,7 @@ def handle_post(req):
 			search_url = f"https://hackaday.com/blog/?s={search_term.replace(' ', '+')}"
 			try:
 				response = requests.get(search_url)
-				processed_content = process_html(response.text)
+				processed_content = process_html(response.text, search_url)
 				return processed_content, response.status_code
 			except Exception as e:
 				return f"Error: {str(e)}", 500
