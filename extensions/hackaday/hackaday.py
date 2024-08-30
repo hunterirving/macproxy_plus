@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup, Comment
 from html_utils import transcode_html
 from datetime import datetime
 import re
-
+from urllib.parse import urlparse, unquote
 DOMAIN = "hackaday.com"
 
 def process_html(content, url):
@@ -408,7 +408,7 @@ fresh hacks every day                 /___/
 	add_br_after_comments(soup)
 
 	# Process entry-content divs for blog listings and search results
-	if 'hackaday.com/blog/' in url or 'hackaday.com/author/' in url:
+	if 'hackaday.com/blog/' in url or 'hackaday.com/author/' in url or 'hackaday.com/page/' in url:
 		entry_content_divs = soup.find_all('div', class_='entry-content')
 		for div in entry_content_divs:
 			p_tags = div.find_all('p')
@@ -511,6 +511,54 @@ fresh hacks every day                 /___/
 		'''
 		nav_links.replace_with(BeautifulSoup(new_html, 'html.parser'))
 
+	# Extract the base URL and path
+	parsed_url = urlparse(url)
+	base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+	path = parsed_url.path.rstrip('/')  # Remove trailing slash if present
+
+	# Determine the appropriate title
+	if '/blog/' in url and 's=' in url:
+		search_term = unquote(url.split('s=')[-1])
+		new_title = f'Hackaday | Search results for "{search_term}"'
+	elif url == base_url or url == f"{base_url}/":
+		new_title = "Hackaday | Fresh Hacks Every Day"
+	elif path == "/blog":
+		new_title = "Blog | Hackaday | Fresh Hacks Every Day"
+	elif path.startswith("/blog/page/") or path.startswith("/page/"):
+		parts = path.strip('/').split('/')
+		page_number = parts[-1]
+		new_title = f"Blog | Hackaday | Fresh Hacks Every Day | Page {page_number}"
+	elif re.match(r'/\d{4}/\d{2}/\d{2}/[^/]+', path):
+		# This is an article page (with or without trailing slash)
+		header = soup.find('header')
+		if header:
+			title_b = header.find('b')
+			if title_b:
+				article_title = title_b.text.strip().split('<br')[0]  # Remove <br> or <br/> if present
+				new_title = f"{article_title} | Hackaday"
+			else:
+				new_title = "Hackaday | Fresh Hacks Every Day"
+		else:
+			new_title = "Hackaday | Fresh Hacks Every Day"
+	else:
+		new_title = "Hackaday | Fresh Hacks Every Day"
+
+	# Update or create the title tag
+	title_tag = soup.find('title')
+	if title_tag:
+		title_tag.string = new_title
+	else:
+		new_title_tag = soup.new_tag('title')
+		new_title_tag.string = new_title
+		head_tag = soup.find('head')
+		if head_tag:
+			head_tag.insert(0, new_title_tag)
+	
+	# Remove the specific Hackaday search form
+	hackaday_native_search = soup.find('form', attrs={'action': 'https://hackaday.com/', 'method': 'get', 'role': 'search'})
+	if hackaday_native_search:
+		hackaday_native_search.decompose()
+
 	# Remove all class attributes to make page load faster
 	for tag in soup.find_all(class_=True):
 		del tag['class']
@@ -521,7 +569,7 @@ fresh hacks every day                 /___/
 
 	# Convert problem characters and return
 	updated_html = str(soup)
-	print(updated_html)
+	# print(updated_html)
 	return updated_html
 
 def handle_get(req):
@@ -537,7 +585,7 @@ def handle_request(req):
 	if req.method == 'GET':
 		if req.path == '/blog/' and 's' in req.args:
 			search_term = req.args.get('s')
-			url = f"https://hackaday.com/blog/?s={search_term.replace(' ', '+')}"
+			url = f"https://hackaday.com/blog/?s={search_term}"
 		else:
 			url = f"https://hackaday.com{req.path}"
 			if req.query_string:
