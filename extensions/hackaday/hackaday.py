@@ -288,9 +288,9 @@ def process_html(content, url):
 	body_tag = soup.find('body')
 	if body_tag:
 		# Create the search form
-		search_form = soup.new_tag('form', method='post', action='/search')
+		search_form = soup.new_tag('form', method='get', action='/blog/')
 		search_input = soup.new_tag('input', **{'type': 'text', 'size': '49', 'required': True, 'autocomplete': 'off'})
-		search_input['name'] = 'search_term'
+		search_input['name'] = 's'
 		search_button = soup.new_tag('input', **{'type': 'submit', 'value': 'Search'})
 		search_form.append(search_input)
 		search_form.append(search_button)
@@ -533,24 +533,22 @@ def handle_get(req):
 	except Exception as e:
 		return f"Error: {str(e)}", 500
 
-def handle_post(req):
-	if req.path == '/search':
-		search_term = req.form.get('search_term')
-		if search_term:
-			search_url = f"https://hackaday.com/blog/?s={search_term.replace(' ', '+')}"
-			try:
-				response = requests.get(search_url)
-				processed_content = process_html(response.text, search_url)
-				return processed_content, response.status_code
-			except Exception as e:
-				return f"Error: {str(e)}", 500
-	return "POST method not supported", 405
-
 def handle_request(req):
-	if req.method == 'POST':
-		return handle_post(req)
-	elif req.method == 'GET':
-		return handle_get(req)
+	if req.method == 'GET':
+		if req.path == '/blog/' and 's' in req.args:
+			search_term = req.args.get('s')
+			url = f"https://hackaday.com/blog/?s={search_term.replace(' ', '+')}"
+		else:
+			url = f"https://hackaday.com{req.path}"
+			if req.query_string:
+				url += f"?{req.query_string.decode('utf-8')}"
+		
+		try:
+			response = requests.get(url)
+			processed_content = process_html(response.text, url)
+			return processed_content, response.status_code
+		except Exception as e:
+			return f"Error: {str(e)}", 500
 	else:
 		return "Not Found", 404
 
