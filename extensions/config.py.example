@@ -17,5 +17,6 @@ ENABLED_EXTENSIONS = [
 	#"npr",
 	#"weather",
 	#"wiby",
+	#"wikipedia",
 	#"youtube"
 ]

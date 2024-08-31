@@ -65,6 +65,7 @@ CONVERSION_TABLE = {
 	"é": b"e",
 	"ø": b"o",
 	"Å": b"A",
+	"â": b"a",
 
 	# Arrows
 	"←": b"<",
