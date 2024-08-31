@@ -5,6 +5,9 @@
 # open_ai_api_key = "YOUR_OPENAI_API_KEY_HERE"
 # anthropic_api_key = "YOUR_ANTHROPIC_API_KEY_HERE"
 
+# Used by weather extension
+# zip_code = "YOUR_ZIP_CODE"
+
 # Uncomment lines to enable desired extensions:
 ENABLED_EXTENSIONS = [
 	#"chatgpt",
@@ -12,6 +15,7 @@ ENABLED_EXTENSIONS = [
 	#"hackaday",
 	#"hacksburg",
 	#"npr",
+	#"weather",
 	#"wiby",
 	#"youtube"
 ]

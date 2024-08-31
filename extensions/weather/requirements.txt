@@ -1,0 +1,2 @@
+# this extension requires the commandline weather application "wego" (https://github.com/schachmat/wego),
+# which in turn requires an openweathermap.org API key (You can register for one for free at https://home.openweathermap.org/users/sign_up).
