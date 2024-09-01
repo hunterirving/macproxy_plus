@@ -8,7 +8,7 @@ DOMAIN = "wikipedia.org"
 
 def create_search_form():
 	return '''
-	<br><br><br>
+	<br>
 	<center>
 		<h6><font size="7" face="Times"><b>WIKIPEDIA</b></font><br>The Free Encyclopedia</h6>
 		<form action="/wiki/" method="get">
@@ -17,6 +17,20 @@ def create_search_form():
 		</form>
 	</center>
 	'''
+
+def get_featured_article_snippet():
+	try:
+		response = requests.get("https://en.wikipedia.org/wiki/Main_Page")
+		response.raise_for_status()
+		soup = BeautifulSoup(response.text, 'html.parser')
+		tfa_div = soup.find('div', id='mp-tfa')
+		if tfa_div:
+			first_p = tfa_div.find('p')
+			if first_p:
+				return f'<br><br><b>From today\'s featured article:</b>{str(first_p)}'
+	except Exception as e:
+		print(f"Error fetching featured article: {str(e)}")
+	return ''
 
 def process_html(content, title):
 	return f'<html><head><title>{title.replace("_", " ")}</title></head><body>{content}</body></html>'
@@ -28,7 +42,8 @@ def handle_request(req):
 		if not path or path == 'wiki/':
 			search_query = req.args.get('search', '')
 			if not search_query:
-				return process_html(create_search_form(), "Wikipedia"), 200
+				content = create_search_form() + get_featured_article_snippet()
+				return process_html(content, "Wikipedia"), 200
 			
 			# Redirect to /wiki/[SEARCH_TERM]
 			return handle_wiki_page(search_query)
@@ -207,8 +222,6 @@ def handle_wiki_page(title):
 					img_tag.decompose()
 
 				content = header_table + str(content_div)
-				print(content)
-
 			else:
 				content = header_table + "<p>Content not found.</p>"
 
