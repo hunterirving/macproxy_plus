@@ -379,6 +379,7 @@ def process_html(content, url):
 	# Find and remove all footer tags with class 'entry-footer'
 	for tag in soup.find_all('footer', class_='entry-footer'):
 		tag.decompose()
+
 	# Remove tags with inner content "Posts navigation"
 	for tag in soup.find_all(string="Posts navigation"):
 		tag.parent.decompose()
