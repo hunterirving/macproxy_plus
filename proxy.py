@@ -41,55 +41,74 @@ def handle_request(path):
 	
 	print(f'Current override extension: {override_extension}')
 
-	# Check if we're in override mode
+	if handle_override_extension():
+		return
+
+	matching_extension = find_matching_extension(host)
+	if matching_extension:
+		return handle_matching_extension(matching_extension)
+
+	return handle_default_request()
+
+def handle_override_extension():
+	global override_extension
 	if override_extension:
-		# Extract just the extension name from the full module path
 		extension_name = override_extension.split('.')[-1]
 		if extension_name in extensions:
 			response = extensions[extension_name].handle_request(request)
-			# Check if the override has been disabled
-			if hasattr(extensions[extension_name], 'get_override_status') and not extensions[extension_name].get_override_status():
-				override_extension = None
-				print("Override disabled")
-			
-			# Apply transcode_html to the response if it's HTML
-			if isinstance(response, str) and response.strip().startswith('<!DOCTYPE html>'):
-				response = transcode_html(response, app.config["DISABLE_CHAR_CONVERSION"])
-			return response
+			check_override_status(extension_name)
+			return process_response(response)
 		else:
 			print(f"Warning: Override extension '{extension_name}' not found. Resetting override.")
 			override_extension = None
+	return False
 
-	# Check if the host matches any of our extensions
-	matching_extension = None
+def check_override_status(extension_name):
+	global override_extension
+	if hasattr(extensions[extension_name], 'get_override_status') and not extensions[extension_name].get_override_status():
+		override_extension = None
+		print("Override disabled")
+
+def find_matching_extension(host):
 	for domain, extension in domain_to_extension.items():
 		if host.endswith(domain):
-			matching_extension = extension
-			break
-	
-	if matching_extension:
-		response = matching_extension.handle_request(request)
-		
-		# Check if the extension wants to override
-		if hasattr(matching_extension, 'get_override_status') and matching_extension.get_override_status():
-			override_extension = matching_extension.__name__
-			print(f"Override enabled for {override_extension}")
-		
-		if isinstance(response, tuple):
-			content, status_code = response
-		elif isinstance(response, Response):
-			return response  # If it's already a Response object, return it directly
-		else:
-			content, status_code = response, 200  # Assume 200 if no status code provided
-		
-		if isinstance(content, str):  # Assuming HTML content is returned as a string
-			content = transcode_html(
-				content,
-				app.config["DISABLE_CHAR_CONVERSION"],
-			)
-		return content, status_code
+			return extension
+	return None
 
+def handle_matching_extension(matching_extension):
+	global override_extension
+	response = matching_extension.handle_request(request)
+	
+	if hasattr(matching_extension, 'get_override_status') and matching_extension.get_override_status():
+		override_extension = matching_extension.__name__
+		print(f"Override enabled for {override_extension}")
+	
+	return process_response(response)
+
+def process_response(response):
+	if isinstance(response, tuple):
+		content, status_code = response
+	elif isinstance(response, Response):
+		return response
+	else:
+		content, status_code = response, 200
+
+	if isinstance(content, str):
+		content = transcode_html(content, app.config["DISABLE_CHAR_CONVERSION"])
+	return content, status_code
+
+def handle_default_request():
 	url = request.url.replace("https://", "http://", 1)
+	headers = prepare_headers()
+	
+	try:
+		resp = send_request(url, headers)
+	except Exception as e:
+		return abort(500, ERROR_HEADER + str(e))
+
+	return process_default_response(resp)
+
+def prepare_headers():
 	headers = {
 		"Accept": request.headers.get("Accept"),
 		"Accept-Language": request.headers.get("Accept-Language"),
@@ -98,24 +117,28 @@ def handle_request(path):
 	}
 	if app.config["USER_AGENT"]:
 		headers["User-Agent"] = app.config["USER_AGENT"]
-	try:
-		if request.method == "POST":
-			resp = session.post(url, data=request.form, headers=headers, allow_redirects=True)
-		else:
-			resp = session.get(url, params=request.args, headers=headers)
-	except Exception as e:
-		return abort(500, ERROR_HEADER + str(e))
+	return headers
 
+def send_request(url, headers):
+	if request.method == "POST":
+		return session.post(url, data=request.form, headers=headers, allow_redirects=True)
+	else:
+		return session.get(url, params=request.args, headers=headers)
+
+def process_default_response(resp):
 	if resp.status_code in HTTP_ERRORS:
 		return abort(resp.status_code)
+	
 	if "content-type" in resp.headers.keys():
 		g.content_type = resp.headers["Content-Type"]
+	
 	if resp.headers["Content-Type"].startswith("text/html"):
 		transcoded_content = transcode_html(
 			resp.text,
 			app.config["DISABLE_CHAR_CONVERSION"],
 		)
 		return transcoded_content, resp.status_code
+	
 	return resp.content, resp.status_code
 
 @app.after_request
