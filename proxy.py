@@ -5,6 +5,7 @@ from flask import Flask, request, session, g, abort, Response
 from html_utils import transcode_html
 from urllib.parse import urlparse
 
+os.environ['FLASK_ENV'] = 'development'
 app = Flask(__name__)
 session = requests.Session()
 
@@ -41,8 +42,9 @@ def handle_request(path):
 	
 	print(f'Current override extension: {override_extension}')
 
-	if handle_override_extension():
-		return
+	override_response = handle_override_extension()
+	if override_response is not None:
+		return override_response
 
 	matching_extension = find_matching_extension(host)
 	if matching_extension:
@@ -61,7 +63,7 @@ def handle_override_extension():
 		else:
 			print(f"Warning: Override extension '{extension_name}' not found. Resetting override.")
 			override_extension = None
-	return False
+	return None  # Return None if no override is active
 
 def check_override_status(extension_name):
 	global override_extension
@@ -181,4 +183,4 @@ if __name__ == "__main__":
 	arguments = parser.parse_args()
 	app.config["USER_AGENT"] = arguments.user_agent
 	app.config["DISABLE_CHAR_CONVERSION"] = arguments.disable_char_conversion
-	app.run(host="0.0.0.0", port=arguments.port)
+	app.run(host="0.0.0.0", port=arguments.port, debug=False)

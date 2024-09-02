@@ -69,6 +69,10 @@ CONVERSION_TABLE = {
 	"ø": b"o",
 	"Å": b"A",
 	"â": b"a",
+	"Æ": b"AE",
+	"æ": b"ae",
+	"⟨": b"<",
+	"⟩": b">",
 
 	# Arrows
 	"←": b"<",
@@ -131,7 +135,7 @@ CONVERSION_TABLE = {
 	"&#9662;": b"v",
 
 	# Musical note
-	"♫": b"",
+	"♫": b"~",
 	"&spades;": b""
 }
 
