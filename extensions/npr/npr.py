@@ -1,7 +1,6 @@
 from flask import request, redirect
 import requests
 from bs4 import BeautifulSoup
-from html_utils import transcode_html
 
 DOMAIN = "npr.org"
 
@@ -29,8 +28,7 @@ def handle_get(req):
 			if tag.has_attr('src'):
 				tag['src'] = f"/{tag['src'].lstrip('/')}"
 
-		content = transcode_html(str(soup), "html5", False)
-		return content, response.status_code
+		return str(soup), response.status_code
 	except Exception as e:
 		return f"Error: {str(e)}", 500
 

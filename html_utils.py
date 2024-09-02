@@ -43,6 +43,8 @@ CONVERSION_TABLE = {
 	"&bull;": b"*",
 	"…": b"...",
 	"&hellip;": b"...",
+	"\u00A0": b" ",
+	"&nbsp;": b" ",
 
 	# Math symbols
 	"±": b"+/-",
@@ -52,6 +54,7 @@ CONVERSION_TABLE = {
 	"≠": b"!=",
 	"&ne;": b"!=",
 	"&times;": b"x",
+	"⁄": b"/",
 
 	# Miscellaneous symbols
 	"°": b"*",
@@ -132,51 +135,44 @@ CONVERSION_TABLE = {
 	"&spades;": b""
 }
 
-def transcode_html(html, html_formatter, disable_char_conversion):
+def transcode_html(html, disable_char_conversion):
 	"""
 	Uses BeautifulSoup to transcode payloads of the text/html content type
 	"""
-	# Ensure html is in bytes
-	if isinstance(html, str):
-		html = html.encode("utf-8")
+	if isinstance(html, bytes):
+		html = html.decode("utf-8", errors="replace")
 
 	if not disable_char_conversion:
-		# Replace characters and entities based on the conversion table
 		for key, replacement in CONVERSION_TABLE.items():
-			html = html.replace(key.encode("utf-8"), replacement)
+			if isinstance(replacement, bytes):
+				replacement = replacement.decode("utf-8")
+			html = html.replace(key, replacement)
 
 	soup = BeautifulSoup(html, "html.parser")
+	
+	# Remove all class attributes to make pages load faster
+	for tag in soup.find_all(class_=True):
+		del tag['class']
+	
 	for tag in soup(["script", "link", "style", "source", "picture"]):
 		tag.decompose()
 	for tag in soup():
 		for attr in ["style", "onclick"]:
 			if attr in tag.attrs:
 				del tag[attr]
-	for tag in soup("base"):
-		tag["href"] = tag["href"].replace("https://", "http://")
-	for tag in soup.findAll("a", href=True):
-		tag["href"] = tag["href"].replace("https://", "http://")
+	for tag in soup(["base", "a"]):
+		if "href" in tag.attrs:
+			tag["href"] = tag["href"].replace("https://", "http://")
 	for tag in soup("img"):
-		try:
+		if "src" in tag.attrs:
 			tag["src"] = tag["src"].replace("https://", "http://")
-		except:
-			print("Malformed img tag: " + str(tag))
 
-	# Prettify the HTML
-	html = soup.prettify(formatter=html_formatter).encode("utf-8")
-
-	# Convert to string for manipulation
-	html_str = html.decode('utf-8')
-
-	# Strip whitespace from inner text of <a> tags
-	html_str = re.sub(r'(<a [^>]*>)(\s*)([^<]*?)(\s*)(</a>)', lambda match: f'{match.group(1)}{match.group(3).strip()}{match.group(5)}', html_str)
+	html = str(soup)
+	html = html.replace('<br/>', '<br>')
+	html = html.replace('<hr/>', '<hr>')
 	
-	# Convert back to bytes
-	html = html_str.encode('utf-8')
+	# Ensure the output is properly encoded
+	html_bytes = html.encode('utf-8')
+	print(html_bytes)
 
-	if not disable_char_conversion:
-		# Replace characters and entities based on the conversion table
-		for key, replacement in CONVERSION_TABLE.items():
-			html = html.replace(key.encode("utf-8"), replacement)
-
-	return html.decode("utf-8")
+	return html_bytes

@@ -1,7 +1,6 @@
 from flask import request, render_template_string
 import anthropic
 import extensions.config as config
-from html_utils import transcode_html
 
 # Initialize the Anthropic client with your API key
 client = anthropic.Anthropic(api_key=config.anthropic_api_key)
@@ -93,8 +92,6 @@ def chat_interface(request):
             response_body = response.content[0].text
             messages.append({"role": "assistant", "content": response_body})
 
-            # Sanitize the response body
-            response_body = transcode_html(response_body, "html5", False)
         except Exception as e:
             response_body = f"An error occurred: {str(e)}"
             messages.append({"role": "assistant", "content": response_body})

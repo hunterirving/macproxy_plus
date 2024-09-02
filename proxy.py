@@ -11,6 +11,9 @@ session = requests.Session()
 HTTP_ERRORS = (403, 404, 500, 503, 504)
 ERROR_HEADER = "[[Macproxy Encountered an Error]]"
 
+# Global variable to store the override extension
+override_extension = None
+
 # Try to import config.py from the extensions folder and enable extensions
 try:
 	import extensions.config as config
@@ -32,9 +35,27 @@ for ext in ENABLED_EXTENSIONS:
 @app.route("/", defaults={"path": "/"}, methods=["GET", "POST"])
 @app.route("/<path:path>", methods=["GET", "POST"])
 def handle_request(path):
+	global override_extension
 	parsed_url = urlparse(request.url)
 	host = parsed_url.netloc.split(':')[0]  # Remove port if present
 	
+	print(f'Current override extension: {override_extension}')
+
+	# Check if we're in override mode
+	if override_extension:
+		# Extract just the extension name from the full module path
+		extension_name = override_extension.split('.')[-1]
+		if extension_name in extensions:
+			response = extensions[extension_name].handle_request(request)
+			# Check if the override has been disabled
+			if hasattr(extensions[extension_name], 'get_override_status') and not extensions[extension_name].get_override_status():
+				override_extension = None
+				print("Override disabled")
+			return response
+		else:
+			print(f"Warning: Override extension '{extension_name}' not found. Resetting override.")
+			override_extension = None
+
 	# Check if the host matches any of our extensions
 	matching_extension = None
 	for domain, extension in domain_to_extension.items():
@@ -44,6 +65,12 @@ def handle_request(path):
 	
 	if matching_extension:
 		response = matching_extension.handle_request(request)
+		
+		# Check if the extension wants to override
+		if hasattr(matching_extension, 'get_override_status') and matching_extension.get_override_status():
+			override_extension = matching_extension.__name__
+			print(f"Override enabled for {override_extension}")
+		
 		if isinstance(response, tuple):
 			content, status_code = response
 		elif isinstance(response, Response):
@@ -54,7 +81,6 @@ def handle_request(path):
 		if isinstance(content, str):  # Assuming HTML content is returned as a string
 			content = transcode_html(
 				content,
-				app.config["HTML_FORMATTER"],
 				app.config["DISABLE_CHAR_CONVERSION"],
 			)
 		return content, status_code
@@ -83,7 +109,6 @@ def handle_request(path):
 	if resp.headers["Content-Type"].startswith("text/html"):
 		transcoded_content = transcode_html(
 			resp.text,
-			app.config["HTML_FORMATTER"],
 			app.config["DISABLE_CHAR_CONVERSION"],
 		)
 		return transcoded_content, resp.status_code
@@ -128,6 +153,5 @@ if __name__ == "__main__":
 	)
 	arguments = parser.parse_args()
 	app.config["USER_AGENT"] = arguments.user_agent
-	app.config["HTML_FORMATTER"] = arguments.html_formatter
 	app.config["DISABLE_CHAR_CONVERSION"] = arguments.disable_char_conversion
 	app.run(host="0.0.0.0", port=arguments.port)

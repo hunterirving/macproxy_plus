@@ -3,7 +3,6 @@
 from flask import request, redirect, render_template_string
 import requests
 from bs4 import BeautifulSoup, Comment
-from html_utils import transcode_html
 from datetime import datetime
 import re
 from urllib.parse import urlparse, unquote
@@ -58,7 +57,7 @@ def process_html(content, url):
 				meta_authors_span.append(soup.new_tag('br'))
 		meta_authors_list.replace_with(meta_authors_span)
 
-	# Replace <h1> tags with class "entry-title" with <b> tags, preserving their inner contents and adding <br><br>
+	# Replace <h1> tags with class "entry-title" with <b> tags, preserving their inner contents and adding <br>
 	entry_titles = soup.find_all('h1', class_='entry-title')
 	for h1 in entry_titles:
 		b_tag = soup.new_tag('b')
@@ -302,7 +301,7 @@ def process_html(content, url):
 		# Create the copyright div
 		copyright_div = soup.new_tag('div')
 		current_year = datetime.now().year
-		copyright_div.string = f"Copyright © {current_year} | Hackaday, Hack A Day, and the Skull and Wrenches Logo are Trademarks of Hackaday.com"
+		copyright_div.string = f"Copyright (c) {current_year} | Hackaday, Hack A Day, and the Skull and Wrenches Logo are Trademarks of Hackaday.com"
 		copyright_p = soup.new_tag('p')
 		copyright_p.append(copyright_div)
 
@@ -420,8 +419,8 @@ fresh hacks every day                 /___/
 			
 			content = content.strip()
 			if len(content) > 200:
-				last_space = content[:200].rfind(' ')
-				content = content[:last_space]
+				last_space = content[:201].rfind(' ')
+				content = content[:last_space + 1]
 			
 			div.string = content
 			
@@ -535,7 +534,7 @@ fresh hacks every day                 /___/
 		if header:
 			title_b = header.find('b')
 			if title_b:
-				article_title = title_b.text.strip().split('<br')[0]  # Remove <br> or <br/> if present
+				article_title = title_b.text.strip().split('<br>')[0]  # Remove <br> if present
 				new_title = f"{article_title} | Hackaday"
 			else:
 				new_title = "Hackaday | Fresh Hacks Every Day"
@@ -560,9 +559,9 @@ fresh hacks every day                 /___/
 	if hackaday_native_search:
 		hackaday_native_search.decompose()
 
-	# Remove all class attributes to make page load faster
-	for tag in soup.find_all(class_=True):
-		del tag['class']
+	# Add a space at the beginning of each <span class="says"> tag
+	for span in soup.find_all('span', class_='says'):
+		span.string = ' ' + (span.string or '')
 	
 	# Remove empty lines between tags throughout the document
 	for element in soup(text=lambda text: isinstance(text, str) and not text.strip()):
@@ -570,7 +569,6 @@ fresh hacks every day                 /___/
 
 	# Convert problem characters and return
 	updated_html = str(soup)
-	# print(updated_html)
 	return updated_html
 
 def handle_get(req):
@@ -604,16 +602,15 @@ def handle_request(req):
 def add_br_after_comments(soup):
 	def process_ol(ol):
 		children = ol.find_all('li', recursive=False)
-		for index, li in enumerate(children):
+		for li in children:
 			inner_ol = li.find('ol', recursive=False)
 			if inner_ol:
 				# Add <br> before the inner ol
 				inner_ol.insert_before(soup.new_tag('br'))
 				process_ol(inner_ol)
-			else:
-				# Add <br> after the current li unless it is the last li
-				if index != len(children) - 1:
-					li.insert_after(soup.new_tag('br'))
+			
+			# Always add <br> after the current li
+			li.insert_after(soup.new_tag('br'))
 	
 	comment_lists = soup.find_all('ol', class_='comment-list')
 	for comment_list in comment_lists:

@@ -141,7 +141,7 @@ def handle_wiki_page(title):
 					element.decompose()
 
 				# Remove specific sections (External links, References, Notes)
-				for section_id in ['External_links', 'References', 'Notes', 'Further_reading', 'Bibliography']:
+				for section_id in ['External_links', 'References', 'Notes', 'Further_reading', 'Bibliography', 'Timeline']:
 					heading = content_div.find(['h2', 'h3'], id=section_id)
 					if heading:
 						parent_div = heading.find_parent('div', class_='mw-heading')
