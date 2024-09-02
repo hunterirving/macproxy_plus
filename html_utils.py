@@ -173,6 +173,5 @@ def transcode_html(html, disable_char_conversion):
 	
 	# Ensure the output is properly encoded
 	html_bytes = html.encode('utf-8')
-	print(html_bytes)
 
 	return html_bytes

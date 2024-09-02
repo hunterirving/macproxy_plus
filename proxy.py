@@ -51,6 +51,10 @@ def handle_request(path):
 			if hasattr(extensions[extension_name], 'get_override_status') and not extensions[extension_name].get_override_status():
 				override_extension = None
 				print("Override disabled")
+			
+			# Apply transcode_html to the response if it's HTML
+			if isinstance(response, str) and response.strip().startswith('<!DOCTYPE html>'):
+				response = transcode_html(response, app.config["DISABLE_CHAR_CONVERSION"])
 			return response
 		else:
 			print(f"Warning: Override extension '{extension_name}' not found. Resetting override.")
