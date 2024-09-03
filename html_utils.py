@@ -7,6 +7,8 @@ CONVERSION_TABLE = {
 	"&cent;": b"cent",
 	"€": b"EUR",
 	"&euro;": b"EUR",
+	"&yen;": b"YEN",
+	"&pound;": b"GBP",
 
 	# Quotes and dashes
 	"«": b"'",
@@ -64,13 +66,16 @@ CONVERSION_TABLE = {
 	"″": b"''",
 	"&Prime;": b"''",
 	"™": b"(tm)",
-	"&trade;": b"(tm)",
+	"&trade;": b"(TM)",
+	"&reg;": b"(R)",
+	"&copy;": b"(c)",
 	"é": b"e",
 	"ø": b"o",
 	"Å": b"A",
 	"â": b"a",
 	"Æ": b"AE",
 	"æ": b"ae",
+	"á": b"a",
 	"⟨": b"<",
 	"⟩": b">",
 
@@ -135,7 +140,7 @@ CONVERSION_TABLE = {
 	"&#9662;": b"v",
 
 	# Musical note
-	"♫": b"~",
+	"♫": b"",
 	"&spades;": b""
 }
 
