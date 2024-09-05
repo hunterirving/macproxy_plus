@@ -4,9 +4,10 @@ from waybackpy import WaybackMachineCDXServerAPI
 import requests
 from bs4 import BeautifulSoup
 import datetime
+import calendar
 
 DOMAIN = "web.archive.org"
-TARGET_DATE = "19960101"
+TARGET_DATE = "19860101"
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -15,10 +16,36 @@ HTML_TEMPLATE = """
 	<title>WayBack Machine</title>
 </head>
 <body>
-	<center><br>
+	<center>{% if not override_active %}<br>{% endif %}
 		<font size="7"><h4>WayBack<br>Machine</h4></font>
 		<form method="post">
 			{% if override_active %}
+				<table>
+					<tr>
+						<td>
+							<select name="month">
+								{% for month in months %}
+									<option value="{{ month }}" {% if month == selected_month %}selected{% endif %}>{{ month }}</option>
+								{% endfor %}
+							</select>
+						</td>
+						<td>
+							<select name="day">
+								{% for day in range(1, 32) %}
+									<option value="{{ day }}" {% if day == selected_day %}selected{% endif %}>{{ day }}</option>
+								{% endfor %}
+							</select>
+						</td>
+						<td>
+							<select name="year">
+								{% for year in range(1986, current_year + 1) %}
+									<option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}</option>
+								{% endfor %}
+							</select>
+						</td>
+					</tr>
+				</table>
+				<input type="submit" name="action" value="set date">
 				<input type="submit" name="action" value="disable">
 			{% else %}
 				<input type="submit" name="action" value="enable">
@@ -26,8 +53,8 @@ HTML_TEMPLATE = """
 		</form>
 		<p>
 			{% if override_active %}
-				<b>wayback machine enabled!</b><br><br>
-				enter a URL in the address bar,<br>or click <b>disable</b> to quit.
+				<b>wayback machine enabled!</b><br>
+				enter a URL in the address bar, or click <b>disable</b> to quit.
 			{% else %}
 				wayback machine disabled.<br>
 				click <b>enable</b> to begin.
@@ -39,6 +66,12 @@ HTML_TEMPLATE = """
 """
 
 override_active = False
+current_date = datetime.datetime.now()
+selected_month = current_date.strftime("%b").upper()
+selected_day = current_date.day
+selected_year = 1986
+current_year = current_date.year
+months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
 
 def get_override_status():
 	global override_active
@@ -74,18 +107,43 @@ def process_html_content(content, base_url):
 	return str(soup)
 
 def handle_request(req):
-	global override_active
+	global override_active, selected_month, selected_day, selected_year, TARGET_DATE, current_year
 
 	parsed_url = urlparse(req.url)
 	is_wayback_domain = parsed_url.netloc == DOMAIN
 
 	if is_wayback_domain:
-		if req.method == 'POST' and req.form.get('action') in ['enable', 'disable']:
+		if req.method == 'POST':
 			action = req.form.get('action')
-			override_active = (action == 'enable')
+			if action == 'enable':
+				override_active = True
+			elif action == 'disable':
+				override_active = False
+			elif action == 'set date':
+				selected_month = req.form.get('month')
+				selected_day = int(req.form.get('day'))
+				selected_year = int(req.form.get('year'))
+
+				# Clamp the day to the correct range for the selected month and year
+				_, last_day = calendar.monthrange(selected_year, months.index(selected_month) + 1)
+				if selected_year == current_year:
+					last_day = min(last_day, current_date.day)
+				if selected_day > last_day:
+					selected_day = last_day
+					print(f"Day clamped to {selected_day} for {selected_month} {selected_year}")
+
+				# Update TARGET_DATE
+				month_num = str(months.index(selected_month) + 1).zfill(2)
+				TARGET_DATE = f"{selected_year}{month_num}{str(selected_day).zfill(2)}"
+				print(f"TARGET_DATE updated to: {TARGET_DATE}")
 
 		return render_template_string(HTML_TEMPLATE, 
-									  override_active=override_active), 200
+									  override_active=override_active,
+									  months=months,
+									  selected_month=selected_month,
+									  selected_day=selected_day,
+									  selected_year=selected_year,
+									  current_year=current_year), 200
 
 	# If we're here, override is active and we're handling a non-wayback domain
 	try:
