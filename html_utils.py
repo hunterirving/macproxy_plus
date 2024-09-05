@@ -69,6 +69,7 @@ CONVERSION_TABLE = {
 	"&trade;": b"(TM)",
 	"&reg;": b"(R)",
 	"&copy;": b"(c)",
+	"©": b"(c)",
 	"é": b"e",
 	"ø": b"o",
 	"Å": b"A",
@@ -76,6 +77,8 @@ CONVERSION_TABLE = {
 	"Æ": b"AE",
 	"æ": b"ae",
 	"á": b"a",
+	"ō": b"o",
+	"ū": b"u",
 	"⟨": b"<",
 	"⟩": b">",
 

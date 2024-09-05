@@ -40,7 +40,8 @@ def handle_request(path):
 	parsed_url = urlparse(request.url)
 	host = parsed_url.netloc.split(':')[0]  # Remove port if present
 	
-	print(f'Current override extension: {override_extension}')
+	if override_extension:
+		print(f'Current override extension: {override_extension}')
 
 	override_response = handle_override_extension()
 	if override_response is not None:
