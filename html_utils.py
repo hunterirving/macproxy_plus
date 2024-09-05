@@ -144,7 +144,14 @@ CONVERSION_TABLE = {
 
 	# Musical note
 	"♫": b"",
-	"&spades;": b""
+	"&spades;": b"",
+
+	# Zero-width space
+    "\u200B": b"",
+    "&ZeroWidthSpace;": b"",
+	"\u200C": b"",
+    "\u200D": b"",
+    "\uFEFF": b"",
 }
 
 def transcode_html(html, disable_char_conversion):

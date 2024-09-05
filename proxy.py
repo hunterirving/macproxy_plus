@@ -3,7 +3,7 @@ import requests
 import argparse
 from flask import Flask, request, session, g, abort, Response
 from html_utils import transcode_html
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 
 os.environ['FLASK_ENV'] = 'development'
 app = Flask(__name__)
@@ -89,16 +89,30 @@ def handle_matching_extension(matching_extension):
 	return process_response(response)
 
 def process_response(response):
-	if isinstance(response, tuple):
-		content, status_code = response
-	elif isinstance(response, Response):
-		return response
-	else:
-		content, status_code = response, 200
+    if isinstance(response, tuple):
+        if len(response) == 3:
+            content, status_code, headers = response
+        elif len(response) == 2:
+            content, status_code = response
+            headers = {}
+        else:
+            content = response[0]
+            status_code = 200
+            headers = {}
+    elif isinstance(response, Response):
+        return response
+    else:
+        content = response
+        status_code = 200
+        headers = {}
 
-	if isinstance(content, str):
-		content = transcode_html(content, app.config["DISABLE_CHAR_CONVERSION"])
-	return content, status_code
+    if isinstance(content, str):
+        content = transcode_html(content, app.config["DISABLE_CHAR_CONVERSION"])
+    
+    response = Response(content, status_code)
+    for key, value in headers.items():
+        response.headers[key] = value
+    return response
 
 def handle_default_request():
 	url = request.url.replace("https://", "http://", 1)

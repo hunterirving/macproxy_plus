@@ -1,4 +1,4 @@
-# HINT: MacWeb 2.0 doesn't seem to have CSS support. To work around this, set <h4> styling to font="Chicago" with Size="As Is".
+# HINT: MacWeb 2.0 doesn't seem to have CSS support. To work around this, in MacWeb 2.0 set <h4> styling to font="Chicago" with Size="As Is".
 
 from flask import request, render_template_string
 import anthropic
