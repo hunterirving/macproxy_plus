@@ -7,7 +7,7 @@ import datetime
 import calendar
 
 DOMAIN = "web.archive.org"
-TARGET_DATE = "19860101"
+TARGET_DATE = "19960101"
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -38,7 +38,7 @@ HTML_TEMPLATE = """
 						</td>
 						<td>
 							<select name="year">
-								{% for year in range(1986, current_year + 1) %}
+								{% for year in range(1996, current_year + 1) %}
 									<option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}</option>
 								{% endfor %}
 							</select>
@@ -69,7 +69,7 @@ override_active = False
 current_date = datetime.datetime.now()
 selected_month = current_date.strftime("%b").upper()
 selected_day = current_date.day
-selected_year = 1986
+selected_year = 1996
 current_year = current_date.year
 months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
 
