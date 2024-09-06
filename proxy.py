@@ -38,12 +38,13 @@ for ext in ENABLED_EXTENSIONS:
 def handle_request(path):
 	global override_extension
 	parsed_url = urlparse(request.url)
+	scheme = parsed_url.scheme
 	host = parsed_url.netloc.split(':')[0]  # Remove port if present
 	
 	if override_extension:
 		print(f'Current override extension: {override_extension}')
 
-	override_response = handle_override_extension()
+	override_response = handle_override_extension(scheme)
 	if override_response is not None:
 		return override_response
 
@@ -53,14 +54,17 @@ def handle_request(path):
 
 	return handle_default_request()
 
-def handle_override_extension():
+def handle_override_extension(scheme):
 	global override_extension
 	if override_extension:
 		extension_name = override_extension.split('.')[-1]
 		if extension_name in extensions:
-			response = extensions[extension_name].handle_request(request)
-			check_override_status(extension_name)
-			return process_response(response)
+			if scheme in ['http', 'https', 'ftp']:
+				response = extensions[extension_name].handle_request(request)
+				check_override_status(extension_name)
+				return process_response(response)
+			else:
+				print(f"Warning: Unsupported scheme '{scheme}' for override extension.")
 		else:
 			print(f"Warning: Override extension '{extension_name}' not found. Resetting override.")
 			override_extension = None
@@ -89,30 +93,30 @@ def handle_matching_extension(matching_extension):
 	return process_response(response)
 
 def process_response(response):
-    if isinstance(response, tuple):
-        if len(response) == 3:
-            content, status_code, headers = response
-        elif len(response) == 2:
-            content, status_code = response
-            headers = {}
-        else:
-            content = response[0]
-            status_code = 200
-            headers = {}
-    elif isinstance(response, Response):
-        return response
-    else:
-        content = response
-        status_code = 200
-        headers = {}
+	if isinstance(response, tuple):
+		if len(response) == 3:
+			content, status_code, headers = response
+		elif len(response) == 2:
+			content, status_code = response
+			headers = {}
+		else:
+			content = response[0]
+			status_code = 200
+			headers = {}
+	elif isinstance(response, Response):
+		return response
+	else:
+		content = response
+		status_code = 200
+		headers = {}
 
-    if isinstance(content, str):
-        content = transcode_html(content, app.config["DISABLE_CHAR_CONVERSION"])
-    
-    response = Response(content, status_code)
-    for key, value in headers.items():
-        response.headers[key] = value
-    return response
+	if isinstance(content, str):
+		content = transcode_html(content, app.config["DISABLE_CHAR_CONVERSION"])
+	
+	response = Response(content, status_code)
+	for key, value in headers.items():
+		response.headers[key] = value
+	return response
 
 def handle_default_request():
 	url = request.url.replace("https://", "http://", 1)

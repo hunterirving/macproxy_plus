@@ -1,5 +1,5 @@
 from flask import request, render_template_string
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urlparse, urlunparse
 from waybackpy import WaybackMachineCDXServerAPI
 import requests
 from bs4 import BeautifulSoup
@@ -71,29 +71,42 @@ def get_override_status():
 	return override_active
 
 def transform_url(url):
-	# If the URL is relative (doesn't start with 'http', 'https', or '/'), leave it as is
-	if not url.startswith(('http://', 'https://', '/')):
+	# If the URL is relative (doesn't start with a scheme or '/'), leave it as is
+	if not re.match(r'^[a-zA-Z]+://|^/', url):
 		return url
 
 	# Parse the URL
 	parsed = urlparse(url)
 
 	# Regular expression to match Wayback Machine URL pattern
-	wayback_pattern = r'^/web/(\d{14})/(https?://.*)'
+	wayback_pattern = r'^/web/(\d{14})/(.+)'
 
 	# Case 1: URL starts with "/web/" followed by 14 digits
 	if parsed.path.startswith('/web/'):
 		match = re.match(wayback_pattern, parsed.path)
 		if match:
-			return match.group(2)  # Return the original URL
+			original_url = match.group(2)
+			return convert_ftp_to_http(original_url)
 
 	# Case 2: Full Wayback Machine URL
 	if parsed.netloc == DOMAIN:
 		match = re.match(wayback_pattern, parsed.path)
 		if match:
-			return match.group(2)  # Return the original URL
+			original_url = match.group(2)
+			# Ensure the URL has a scheme
+			if not re.match(r'^[a-zA-Z]+://', original_url):
+				original_url = 'http://' + original_url
+			return convert_ftp_to_http(original_url)
 
-	# If it's not a Wayback Machine URL, return as is
+	# If it's not a Wayback Machine URL, still convert FTP to HTTP
+	return convert_ftp_to_http(url)
+
+def convert_ftp_to_http(url):
+	parsed = urlparse(url)
+	if parsed.scheme == 'ftp':
+		# Change the scheme to 'http' and reconstruct the URL
+		new_parsed = parsed._replace(scheme='http')
+		return urlunparse(new_parsed)
 	return url
 
 def process_html_content(content):
@@ -180,7 +193,7 @@ def handle_request(req):
 	try:
 		print('Handling request for:', req.url)
 		
-		url = req.url if req.url.startswith('http') else f'http://{req.url}'
+		url = req.url
 		
 		user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 		cdx_api = WaybackMachineCDXServerAPI(url, user_agent)
@@ -205,11 +218,21 @@ def handle_request(req):
 		content = response.text
 		print("Content fetched, length:", len(content))
 		
-		# Process the HTML content
-		processed_content = process_html_content(content)
+		# Process the content based on the protocol
+		if parsed_url.scheme in ['http', 'https']:
+			processed_content = process_html_content(content)
+		elif parsed_url.scheme == 'ftp':
+			processed_content = content  # For FTP, we don't need to process the content
+		else:
+			raise Exception(f"Unsupported protocol: {parsed_url.scheme}")
 		
 		# Return the processed content and status code
-		return processed_content, response.status_code, {'Content-Type': 'text/html'}
+		return processed_content, response.status_code, {'Content-Type': 'text/plain' if parsed_url.scheme == 'ftp' else 'text/html'}
+	
+	except Exception as e:
+		print("Error occurred:", str(e))
+		error_message = f"Error fetching archived page: {str(e)}"
+		return f"<html><body><p>{error_message}</p></body></html>", 500, {'Content-Type': 'text/html'}
 	
 	except Exception as e:
 		print("Error occurred:", str(e))
