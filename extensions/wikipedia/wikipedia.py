@@ -211,6 +211,26 @@ def handle_wiki_page(title):
 				for div in content_div.find_all('div', class_='refbegin'):
 					div.decompose()
 
+				# Remove divs with class "quotebox"
+				for div in content_div.find_all('div', class_='quotebox'):
+					div.decompose()
+
+				#remove tables with class "sidebar"
+				for table in soup.find_all('table', class_='sidebar'):
+					table.decompose()
+				
+				#remove tables with class "wikitable"
+				for table in soup.find_all('table', class_='wikitable'):
+					table.decompose()
+				
+				#remove tables with class "wikitable"
+				for table in soup.find_all('table', class_='mw-collapsible'):
+					table.decompose()
+
+				#remove ul with class "gallery"
+				for ul in soup.find_all('ul', class_='gallery'):
+					ul.decompose()
+
 				# Remove <link> tags
 				for link in content_div.find_all('link'):
 					link.decompose()
