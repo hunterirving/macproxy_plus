@@ -2,15 +2,12 @@ from bs4 import BeautifulSoup
 import re
 
 CONVERSION_TABLE = {
-	# Currency symbols
 	"¢": b"cent",
 	"&cent;": b"cent",
 	"€": b"EUR",
 	"&euro;": b"EUR",
 	"&yen;": b"YEN",
 	"&pound;": b"GBP",
-
-	# Quotes and dashes
 	"«": b"'",
 	"&laquo;": b"'",
 	"»": b"'",
@@ -29,8 +26,6 @@ CONVERSION_TABLE = {
 	"&mdash;": b"--",
 	"―": b"-",
 	"&horbar;": b"-",
-
-	# Punctuation and special characters
 	"·": b"-",
 	"&middot;": b"-",
 	"‚": b",",
@@ -47,8 +42,6 @@ CONVERSION_TABLE = {
 	"&hellip;": b"...",
 	"\u00A0": b" ",
 	"&nbsp;": b" ",
-
-	# Math symbols
 	"±": b"+/-",
 	"&plusmn;": b"+/-",
 	"≈": b"~",
@@ -57,8 +50,6 @@ CONVERSION_TABLE = {
 	"&ne;": b"!=",
 	"&times;": b"x",
 	"⁄": b"/",
-
-	# Miscellaneous symbols
 	"°": b"*",
 	"&deg;": b"*",
 	"′": b"'",
@@ -83,8 +74,6 @@ CONVERSION_TABLE = {
 	"ū": b"u",
 	"⟨": b"<",
 	"⟩": b">",
-
-	# Arrows
 	"←": b"<",
 	"&larr;": b"<",
 	"→": b">",
@@ -101,8 +90,6 @@ CONVERSION_TABLE = {
 	"&searr;": b"\\",
 	"↙": b"/",
 	"&swarr;": b"/",
-
-	# Box-drawing characters
 	"─": b"-",
 	"&boxh;": b"-",
 	"│": b"|",
@@ -125,8 +112,6 @@ CONVERSION_TABLE = {
 	"&boxhu;": b"+",
 	"┼": b"+",
 	"&boxvh;": b"+",
-
-	# Block elements
 	"█": b"#",
 	"&block;": b"#",
 	"▌": b"|",
@@ -137,23 +122,18 @@ CONVERSION_TABLE = {
 	"&uhblk;": b"-",
 	"▄": b"_",
 	"&lhblk;": b"_",
-
-	# Downward triangle
 	"▾": b"v",
 	"&dtrif;": b"v",
 	"&#x25BE;": b"v",
 	"&#9662;": b"v",
-
-	# Musical note
 	"♫": b"",
 	"&spades;": b"",
-
-	# Zero-width space
     "\u200B": b"",
     "&ZeroWidthSpace;": b"",
 	"\u200C": b"",
     "\u200D": b"",
     "\uFEFF": b"",
+	"": b"",
 }
 
 def transcode_html(html, disable_char_conversion):

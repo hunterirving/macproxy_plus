@@ -6,6 +6,8 @@ from bs4 import BeautifulSoup
 import datetime
 import calendar
 import re
+import mimetypes
+import os
 
 DOMAIN = "web.archive.org"
 TARGET_DATE = "19960101"
@@ -132,6 +134,20 @@ def extract_original_url(wayback_url):
 			return 'http://' + path_parts[3]
 	return wayback_url
 
+def get_mime_type(url):
+	# Get the file extension
+	_, ext = os.path.splitext(url)
+	
+	# If it's a .txt file, return 'text/plain'
+	if ext.lower() == '.txt':
+		return 'text/plain'
+	
+	# For other files, use the mimetypes library to guess
+	mime_type, _ = mimetypes.guess_type(url)
+	
+	# If we can't determine the MIME type, default to 'application/octet-stream'
+	return mime_type or 'application/octet-stream'
+
 def handle_request(req):
 	global override_active, selected_month, selected_day, selected_year, TARGET_DATE, current_year, date_update_message
 
@@ -218,16 +234,22 @@ def handle_request(req):
 		content = response.text
 		print("Content fetched, length:", len(content))
 		
-		# Process the content based on the protocol
-		if parsed_url.scheme in ['http', 'https']:
-			processed_content = process_html_content(content)
-		elif parsed_url.scheme == 'ftp':
-			processed_content = content  # For FTP, we don't need to process the content
-		else:
-			raise Exception(f"Unsupported protocol: {parsed_url.scheme}")
+		# Determine the MIME type
+		mime_type = get_mime_type(url)
 		
-		# Return the processed content and status code
-		return processed_content, response.status_code, {'Content-Type': 'text/plain' if parsed_url.scheme == 'ftp' else 'text/html'}
+		# Process the content based on the MIME type
+		if mime_type == 'text/html':
+			processed_content = process_html_content(content)
+		else:
+			processed_content = content  # Don't process non-HTML content
+		
+		# Return the processed content, status code, and appropriate Content-Type
+		return processed_content, response.status_code, {'Content-Type': mime_type}
+	
+	except Exception as e:
+		print("Error occurred:", str(e))
+		error_message = f"Error fetching archived page: {str(e)}"
+		return f"<html><body><p>{error_message}</p></body></html>", 500, {'Content-Type': 'text/html'}
 	
 	except Exception as e:
 		print("Error occurred:", str(e))
