@@ -110,12 +110,23 @@ def process_response(response):
 		status_code = 200
 		headers = {}
 
-	if isinstance(content, str):
-		content = transcode_html(content, app.config["DISABLE_CHAR_CONVERSION"])
-	
+	content_type = headers.get('Content-Type', '').lower()
+
+	# Transcode content unless it's explicitly text/plain
+	if not content_type.startswith('text/plain'):
+		if isinstance(content, str):
+			content = transcode_html(content, app.config["DISABLE_CHAR_CONVERSION"])
+		elif isinstance(content, bytes):
+			content = transcode_html(content.decode('utf-8', errors='replace'), app.config["DISABLE_CHAR_CONVERSION"])
+	else:
+		# For text/plain, ensure content is in bytes
+		if isinstance(content, str):
+			content = content.encode('utf-8')
+
 	response = Response(content, status_code)
 	for key, value in headers.items():
 		response.headers[key] = value
+
 	return response
 
 def handle_default_request():

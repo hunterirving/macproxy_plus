@@ -250,13 +250,3 @@ def handle_request(req):
 		print("Error occurred:", str(e))
 		error_message = f"Error fetching archived page: {str(e)}"
 		return f"<html><body><p>{error_message}</p></body></html>", 500, {'Content-Type': 'text/html'}
-	
-	except Exception as e:
-		print("Error occurred:", str(e))
-		error_message = f"Error fetching archived page: {str(e)}"
-		return f"<html><body><p>{error_message}</p></body></html>", 500, {'Content-Type': 'text/html'}
-	
-	except Exception as e:
-		print("Error occurred:", str(e))
-		error_message = f"Error fetching archived page: {str(e)}"
-		return f"<html><body><p>{error_message}</p></body></html>", 500, {'Content-Type': 'text/html'}
