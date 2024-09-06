@@ -22,31 +22,22 @@ HTML_TEMPLATE = """
 		<font size="7"><h4>WayBack<br>Machine</h4></font>
 		<form method="post">
 			{% if override_active %}
-				<table>
-					<tr>
-						<td>
-							<select name="month">
-								{% for month in months %}
-									<option value="{{ month }}" {% if month == selected_month %}selected{% endif %}>{{ month }}</option>
-								{% endfor %}
-							</select>
-						</td>
-						<td>
-							<select name="day">
-								{% for day in range(1, 32) %}
-									<option value="{{ day }}" {% if day == selected_day %}selected{% endif %}>{{ day }}</option>
-								{% endfor %}
-							</select>
-						</td>
-						<td>
-							<select name="year">
-								{% for year in range(1996, current_year + 1) %}
-									<option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}</option>
-								{% endfor %}
-							</select>
-						</td>
-					</tr>
-				</table>
+				<select name="month">
+					{% for month in months %}
+						<option value="{{ month }}" {% if month == selected_month %}selected{% endif %}>{{ month }}</option>
+					{% endfor %}
+				</select>
+				<select name="day">
+					{% for day in range(1, 32) %}
+						<option value="{{ day }}" {% if day == selected_day %}selected{% endif %}>{{ day }}</option>
+					{% endfor %}
+				</select>
+				<select name="year">
+					{% for year in range(1996, current_year + 1) %}
+						<option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}</option>
+					{% endfor %}
+				</select>
+				<br>
 				<input type="submit" name="action" value="set date">
 				<input type="submit" name="action" value="disable">
 			{% else %}
