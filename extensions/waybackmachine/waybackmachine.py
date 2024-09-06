@@ -8,6 +8,7 @@ import calendar
 
 DOMAIN = "web.archive.org"
 TARGET_DATE = "19960101"
+date_update_message = ""
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -53,7 +54,7 @@ HTML_TEMPLATE = """
 		</form>
 		<p>
 			{% if override_active %}
-				<b>wayback machine enabled!</b><br>
+				<b>wayback machine enabled!</b>{% if date_update_message %} {{ date_update_message }}{% endif %}<br>
 				enter a URL in the address bar, or click <b>disable</b> to quit.
 			{% else %}
 				wayback machine disabled.<br>
@@ -107,7 +108,7 @@ def process_html_content(content, base_url):
 	return str(soup)
 
 def handle_request(req):
-	global override_active, selected_month, selected_day, selected_year, TARGET_DATE, current_year
+	global override_active, selected_month, selected_day, selected_year, TARGET_DATE, current_year, date_update_message
 
 	parsed_url = urlparse(req.url)
 	is_wayback_domain = parsed_url.netloc == DOMAIN
@@ -117,25 +118,42 @@ def handle_request(req):
 			action = req.form.get('action')
 			if action == 'enable':
 				override_active = True
+				date_update_message = ""  # Clear the message when enabling
 			elif action == 'disable':
 				override_active = False
+				date_update_message = ""  # Clear the message when disabling
 			elif action == 'set date':
+				# Always enable override when setting date
+				override_active = True
+
 				selected_month = req.form.get('month')
 				selected_day = int(req.form.get('day'))
 				selected_year = int(req.form.get('year'))
 
 				# Clamp the day to the correct range for the selected month and year
 				_, last_day = calendar.monthrange(selected_year, months.index(selected_month) + 1)
-				if selected_year == current_year:
-					last_day = min(last_day, current_date.day)
 				if selected_day > last_day:
 					selected_day = last_day
-					print(f"Day clamped to {selected_day} for {selected_month} {selected_year}")
+
+				# Create a datetime object for the selected date and current date
+				selected_date = datetime.datetime(selected_year, months.index(selected_month) + 1, selected_day)
+				current_date = datetime.datetime.now()
+
+				# If the selected year is the current year, clamp the date to today or earlier
+				if selected_year == current_year and selected_date > current_date:
+					selected_date = current_date
+					
+				# Update selected values
+				selected_year = selected_date.year
+				selected_month = months[selected_date.month - 1]
+				selected_day = selected_date.day
 
 				# Update TARGET_DATE
-				month_num = str(months.index(selected_month) + 1).zfill(2)
+				month_num = str(selected_date.month).zfill(2)
 				TARGET_DATE = f"{selected_year}{month_num}{str(selected_day).zfill(2)}"
-				print(f"TARGET_DATE updated to: {TARGET_DATE}")
+				
+				# Update the date_update_message
+				date_update_message = f"(date updated to {selected_month} {selected_day}, {selected_year})"
 
 		return render_template_string(HTML_TEMPLATE, 
 									  override_active=override_active,
@@ -143,7 +161,8 @@ def handle_request(req):
 									  selected_month=selected_month,
 									  selected_day=selected_day,
 									  selected_year=selected_year,
-									  current_year=current_year), 200
+									  current_year=current_year,
+									  date_update_message=date_update_message), 200
 
 	# If we're here, override is active and we're handling a non-wayback domain
 	try:
@@ -175,7 +194,7 @@ def handle_request(req):
 		print("Content fetched, length:", len(content))
 		
 		# Process the HTML content
-		processed_content = process_html_content(content, url)
+		processed_content = process_html_content(content, snapshot.archive_url)
 		
 		# Return the processed content and status code
 		return processed_content, response.status_code, {'Content-Type': 'text/html'}

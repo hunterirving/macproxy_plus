@@ -68,6 +68,7 @@ CONVERSION_TABLE = {
 	"™": b"(tm)",
 	"&trade;": b"(TM)",
 	"&reg;": b"(R)",
+	"®": b"(R)",
 	"&copy;": b"(c)",
 	"©": b"(c)",
 	"é": b"e",
