@@ -5,6 +5,7 @@ import requests
 from bs4 import BeautifulSoup
 import datetime
 import calendar
+import re
 
 DOMAIN = "web.archive.org"
 TARGET_DATE = "19960101"
@@ -54,11 +55,11 @@ HTML_TEMPLATE = """
 		</form>
 		<p>
 			{% if override_active %}
-				<b>wayback machine enabled!</b>{% if date_update_message %} {{ date_update_message }}{% endif %}<br>
-				enter a URL in the address bar, or click <b>disable</b> to quit.
+				<b>WayBack Machine enabled!</b>{% if date_update_message %} (date updated to <b>{{ date_update_message }}</b>){% endif %}<br>
+				Enter a URL in the address bar, or click <b>disable</b> to quit.
 			{% else %}
-				wayback machine disabled.<br>
-				click <b>enable</b> to begin.
+				WayBack Machine disabled.<br>
+				Click <b>enable</b> to begin.
 			{% endif %}
 		</p>
 	</center>
@@ -79,33 +80,53 @@ def get_override_status():
 	return override_active
 
 def transform_url(url):
+	# If the URL is relative (doesn't start with 'http', 'https', or '/'), leave it as is
+	if not url.startswith(('http://', 'https://', '/')):
+		return url
+
+	# Parse the URL
 	parsed = urlparse(url)
-	if parsed.netloc == DOMAIN and '/web/' in parsed.path:
-		# Extract the original URL from the Wayback Machine URL
-		path_parts = parsed.path.split('/', 3)
-		if len(path_parts) >= 4:
-			original_url = path_parts[3]
-			if not original_url.startswith(('http://', 'https://')):
-				original_url = 'http://' + original_url
-			if parsed.query:
-				original_url += f'?{parsed.query}'
-			return original_url
+
+	# Regular expression to match Wayback Machine URL pattern
+	wayback_pattern = r'^/web/(\d{14})/(https?://.*)'
+
+	# Case 1: URL starts with "/web/" followed by 14 digits
+	if parsed.path.startswith('/web/'):
+		match = re.match(wayback_pattern, parsed.path)
+		if match:
+			return match.group(2)  # Return the original URL
+
+	# Case 2: Full Wayback Machine URL
+	if parsed.netloc == DOMAIN:
+		match = re.match(wayback_pattern, parsed.path)
+		if match:
+			return match.group(2)  # Return the original URL
+
+	# If it's not a Wayback Machine URL, return as is
 	return url
 
-def process_html_content(content, base_url):
+def process_html_content(content):
 	soup = BeautifulSoup(content, 'html.parser')
 	
 	# Process all links
 	for a in soup.find_all('a', href=True):
-		a['href'] = transform_url(urljoin(base_url, a['href']))
+		a['href'] = transform_url(a['href'])
 	
 	# Process all images, scripts, and other resources
 	for tag in soup.find_all(['img', 'script', 'link'], src=True):
-		tag['src'] = transform_url(urljoin(base_url, tag['src']))
+		tag['src'] = transform_url(tag['src'])
 	for tag in soup.find_all('link', href=True):
-		tag['href'] = transform_url(urljoin(base_url, tag['href']))
+		tag['href'] = transform_url(tag['href'])
 	
 	return str(soup)
+
+def extract_original_url(wayback_url):
+	parsed = urlparse(wayback_url)
+	if parsed.netloc == DOMAIN and '/web/' in parsed.path:
+		path_parts = parsed.path.split('/', 3)
+		if len(path_parts) >= 4:
+			return 'http://' + path_parts[3]
+	return wayback_url
 
 def handle_request(req):
 	global override_active, selected_month, selected_day, selected_year, TARGET_DATE, current_year, date_update_message
@@ -153,7 +174,7 @@ def handle_request(req):
 				TARGET_DATE = f"{selected_year}{month_num}{str(selected_day).zfill(2)}"
 				
 				# Update the date_update_message
-				date_update_message = f"(date updated to {selected_month} {selected_day}, {selected_year})"
+				date_update_message = f"{selected_month} {selected_day}, {selected_year}"
 
 		return render_template_string(HTML_TEMPLATE, 
 									  override_active=override_active,
@@ -194,7 +215,7 @@ def handle_request(req):
 		print("Content fetched, length:", len(content))
 		
 		# Process the HTML content
-		processed_content = process_html_content(content, snapshot.archive_url)
+		processed_content = process_html_content(content)
 		
 		# Return the processed content and status code
 		return processed_content, response.status_code, {'Content-Type': 'text/html'}
