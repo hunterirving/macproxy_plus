@@ -10,7 +10,9 @@ def handle_request(request):
 	if request.method != 'GET':
 		return Response("Only GET requests are supported", status=405)
 
-	url = request.url.replace("reddit.com", "old.reddit.com", 1)
+	url = request.url
+	if not url.startswith(('http://old.reddit.com', 'https://old.reddit.com')):
+		url = url.replace("reddit.com", "old.reddit.com", 1)
 	
 	headers = {
 		'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
@@ -42,22 +44,51 @@ def process_content(content, url):
 	body = new_soup.new_tag('body')
 	html.append(body)
 	
-	font = new_soup.new_tag('font', size="4")
-	if url == "http://old.reddit.com/" or url == "https://old.reddit.com/":
-		b_tag = new_soup.new_tag('b')
-		b_tag.string = "reddit"
-		font.append(b_tag)
-	else:
-		parts = url.split('old.reddit.com')[1].split('/')
-		subreddit = parts[2] if len(parts) > 2 else ''
-		b1 = new_soup.new_tag('b')
-		b1.string = "reddit"
-		font.append(b1)
-		font.append(" | ")
+	table = new_soup.new_tag('table', width="100%")
+	body.append(table)
+	tr = new_soup.new_tag('tr')
+	table.append(tr)
+	
+	left_cell = new_soup.new_tag('td', align="left")
+	right_cell = new_soup.new_tag('td', align="right")
+	tr.append(left_cell)
+	tr.append(right_cell)
+	
+	left_font = new_soup.new_tag('font', size="4")
+	left_cell.append(left_font)
+	
+	b1 = new_soup.new_tag('b')
+	b1.string = "reddit"
+	left_font.append(b1)
+	
+	parts = url.split('reddit.com', 1)[1].split('/')
+	if len(parts) > 2 and parts[1] == 'r':
+		subreddit = parts[2]
+		left_font.append(" | ")
 		s = new_soup.new_tag('span')
 		s.string = f"r/{subreddit}".lower()
-		font.append(s)
-	body.append(font)
+		left_font.append(s)
+	
+	# Add tabmenu items for non-comment pages
+	if "/comments/" not in url:
+		tabmenu = soup.find('ul', class_='tabmenu')
+		if tabmenu:
+			right_font = new_soup.new_tag('font', size="4")
+			right_cell.append(right_font)
+			menu_items = tabmenu.find_all('li')
+			for li in menu_items:
+				a = li.find('a')
+				if a and a.string in ['hot', 'new', 'top']:
+					if 'selected' in li.get('class', []):
+						right_font.append(a.string)
+					else:
+						href = a['href']
+						if href.startswith(('http://old.reddit.com', 'https://old.reddit.com')):
+							href = href.replace('//old.reddit.com', '//reddit.com', 1)
+						new_a = new_soup.new_tag('a', href=href)
+						new_a.string = a.string
+						right_font.append(new_a)
+					right_font.append(" ")
 	
 	hr = new_soup.new_tag('hr')
 	body.append(hr)
@@ -92,13 +123,19 @@ def process_content(content, url):
 							b_author.string = author_element.string
 							d.append(b_author)
 					
-					# Add preview image if it exists
-					preview_img = soup.find('img', class_='preview')
-					if preview_img:
-						img = new_soup.new_tag('img', src=preview_img['src'], width="50", height="40")
+					# Add preview images if they exist and are not in gallery-tile-content
+					preview_imgs = soup.find_all('img', class_='preview')
+					valid_imgs = [img for img in preview_imgs if img.find_parent('div', class_='gallery-tile-content') is None]
+					if valid_imgs:
 						d.append(new_soup.new_tag('br'))
 						d.append(new_soup.new_tag('br'))
-						d.append(img)
+						for img in valid_imgs:
+							enclosing_a = img.find_parent('a')
+							if enclosing_a and enclosing_a.has_attr('href'):
+								img_src = enclosing_a['href']
+								new_img = new_soup.new_tag('img', src=img_src, width="50", height="40")
+								d.append(new_img)
+								d.append(" ")  # Add space between images
 					
 					# Add post content if it exists
 					usertext_body = thing.find('div', class_='usertext-body')
@@ -148,6 +185,10 @@ def process_content(content, url):
 							comments_a = comments_li.find('a', class_='comments')
 							if comments_a:
 								font.append(f" | {comments_a.string}")
+					
+					# Add points
+					points = thing.get('data-score', 'Unknown')
+					font.append(f" | {points} points")
 					
 					font.append(new_soup.new_tag('br'))
 					font.append(new_soup.new_tag('br'))
