@@ -17,6 +17,7 @@ ENABLED_EXTENSIONS = [
 	#"hunterirving",
 	#"npr",
 	#"override",
+	#"reddit",
 	#"waybackmachine",
 	#"weather",
 	#"websim",
