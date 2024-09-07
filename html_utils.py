@@ -1,5 +1,7 @@
 from bs4 import BeautifulSoup
+from bs4.formatter import HTMLFormatter
 import re
+import html
 
 CONVERSION_TABLE = {
 	"¢": b"cent",
@@ -52,7 +54,6 @@ CONVERSION_TABLE = {
 	"⁄": b"/",
 	"°": b"*",
 	"&deg;": b"*",
-	"&amp;": b"&",
 	"′": b"'",
 	"&prime;": b"'",
 	"″": b"''",
@@ -129,13 +130,29 @@ CONVERSION_TABLE = {
 	"&#9662;": b"v",
 	"♫": b"",
 	"&spades;": b"",
-    "\u200B": b"",
-    "&ZeroWidthSpace;": b"",
+	"\u200B": b"",
+	"&ZeroWidthSpace;": b"",
 	"\u200C": b"",
-    "\u200D": b"",
-    "\uFEFF": b"",
-	"": b"",
+	"\u200D": b"",
+	"\uFEFF": b"",
 }
+
+class URLAwareHTMLFormatter(HTMLFormatter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def escape(self, string):
+        """
+        Escape special characters in the given string.
+        """
+        return html.escape(string, quote=True)
+
+    def attributes(self, tag):
+        for key, val in tag.attrs.items():
+            if key in ['href', 'src']:  # Don't escape URL attributes
+                yield key, val
+            else:
+                yield key, self.escape(val)
 
 def transcode_html(html, disable_char_conversion):
 	"""
@@ -169,7 +186,9 @@ def transcode_html(html, disable_char_conversion):
 		if "src" in tag.attrs:
 			tag["src"] = tag["src"].replace("https://", "http://")
 
-	html = str(soup)
+	# Use the custom formatter when converting the soup back to a string
+	html = soup.decode(formatter=URLAwareHTMLFormatter())
+
 	html = html.replace('<br/>', '<br>')
 	html = html.replace('<hr/>', '<hr>')
 	
