@@ -44,8 +44,9 @@ def process_content(content, url):
 	
 	font = new_soup.new_tag('font', size="4")
 	if url == "http://old.reddit.com/" or url == "https://old.reddit.com/":
-		font.string = new_soup.new_tag('b')
-		font.string.string = "reddit"
+		b_tag = new_soup.new_tag('b')
+		b_tag.string = "reddit"
+		font.append(b_tag)
 	else:
 		parts = url.split('old.reddit.com')[1].split('/')
 		subreddit = parts[2] if len(parts) > 2 else ''
