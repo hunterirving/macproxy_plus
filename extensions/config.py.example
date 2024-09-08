@@ -23,5 +23,5 @@ ENABLED_EXTENSIONS = [
 	#"websim",
 	#"wiby",
 	#"wikipedia",
-	#"youtube"
+	#"notyoutube"
 ]
