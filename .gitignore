@@ -12,3 +12,5 @@ extensions/config.py
 # Ignore video files
 *.mp4
 *.flim
+
+extensions/reddit/cached_images/*

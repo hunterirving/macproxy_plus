@@ -138,21 +138,26 @@ CONVERSION_TABLE = {
 }
 
 class URLAwareHTMLFormatter(HTMLFormatter):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
 
-    def escape(self, string):
-        """
-        Escape special characters in the given string.
-        """
-        return html.escape(string, quote=True)
+	def escape(self, string):
+		"""
+		Escape special characters in the given string or list of strings.
+		"""
+		if isinstance(string, list):
+			return [html.escape(str(item), quote=True) for item in string]
+		elif string is None:
+			return ''
+		else:
+			return html.escape(str(string), quote=True)
 
-    def attributes(self, tag):
-        for key, val in tag.attrs.items():
-            if key in ['href', 'src']:  # Don't escape URL attributes
-                yield key, val
-            else:
-                yield key, self.escape(val)
+	def attributes(self, tag):
+		for key, val in tag.attrs.items():
+			if key in ['href', 'src']:  # Don't escape URL attributes
+				yield key, val
+			else:
+				yield key, self.escape(val)
 
 def transcode_html(html, disable_char_conversion):
 	"""
