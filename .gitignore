@@ -16,3 +16,4 @@ extensions/config.py
 # Other
 extensions/youtube
 extensions/reddit/cached_images/*
+cached_images/*

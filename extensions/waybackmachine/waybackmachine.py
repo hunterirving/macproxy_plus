@@ -73,35 +73,39 @@ def get_override_status():
 	return override_active
 
 def transform_url(url):
-	# If the URL is relative (doesn't start with a scheme or '/'), leave it as is
-	if not re.match(r'^[a-zA-Z]+://|^/', url):
-		return url
+    # If the URL is relative and starts with '/web/', prepend the DOMAIN
+    if url.startswith('/web/'):
+        return f'http://{DOMAIN}{url}'
 
-	# Parse the URL
-	parsed = urlparse(url)
+    # If the URL is relative (doesn't start with a scheme or '/'), leave it as is
+    if not re.match(r'^[a-zA-Z]+://|^/', url):
+        return url
 
-	# Regular expression to match Wayback Machine URL pattern
-	wayback_pattern = r'^/web/(\d{14})/(.+)'
+    # Parse the URL
+    parsed = urlparse(url)
 
-	# Case 1: URL starts with "/web/" followed by 14 digits
-	if parsed.path.startswith('/web/'):
-		match = re.match(wayback_pattern, parsed.path)
-		if match:
-			original_url = match.group(2)
-			return convert_ftp_to_http(original_url)
+    # Regular expression to match Wayback Machine URL pattern
+    wayback_pattern = r'^/web/(\d{14})/(.+)'
 
-	# Case 2: Full Wayback Machine URL
-	if parsed.netloc == DOMAIN:
-		match = re.match(wayback_pattern, parsed.path)
-		if match:
-			original_url = match.group(2)
-			# Ensure the URL has a scheme
-			if not re.match(r'^[a-zA-Z]+://', original_url):
-				original_url = 'http://' + original_url
-			return convert_ftp_to_http(original_url)
+    # Case 1: URL starts with "/web/" followed by 14 digits
+    if parsed.path.startswith('/web/'):
+        match = re.match(wayback_pattern, parsed.path)
+        if match:
+            original_url = match.group(2)
+            return convert_ftp_to_http(original_url)
 
-	# If it's not a Wayback Machine URL, still convert FTP to HTTP
-	return convert_ftp_to_http(url)
+    # Case 2: Full Wayback Machine URL
+    if parsed.netloc == DOMAIN:
+        match = re.match(wayback_pattern, parsed.path)
+        if match:
+            original_url = match.group(2)
+            # Ensure the URL has a scheme
+            if not re.match(r'^[a-zA-Z]+://', original_url):
+                original_url = 'http://' + original_url
+            return convert_ftp_to_http(original_url)
+
+    # If it's not a Wayback Machine URL, still convert FTP to HTTP
+    return convert_ftp_to_http(url)
 
 def convert_ftp_to_http(url):
 	parsed = urlparse(url)
@@ -112,27 +116,27 @@ def convert_ftp_to_http(url):
 	return url
 
 def process_html_content(content):
-	soup = BeautifulSoup(content, 'html.parser')
-	
-	# Process all links
-	for a in soup.find_all('a', href=True):
-		a['href'] = transform_url(a['href'])
-	
-	# Process all images, scripts, and other resources
-	for tag in soup.find_all(['img', 'script', 'link'], src=True):
-		tag['src'] = transform_url(tag['src'])
-	for tag in soup.find_all('link', href=True):
-		tag['href'] = transform_url(tag['href'])
-	
-	return str(soup)
+    soup = BeautifulSoup(content, 'html.parser')
+    
+    # Process all links
+    for a in soup.find_all('a', href=True):
+        a['href'] = transform_url(a['href'])
+    
+    # Process all images, scripts, and other resources
+    for tag in soup.find_all(['img', 'script', 'link'], src=True):
+        tag['src'] = transform_url(tag['src'])
+    for tag in soup.find_all('link', href=True):
+        tag['href'] = transform_url(tag['href'])
+    
+    return str(soup)
 
-def extract_original_url(wayback_url):
-	parsed = urlparse(wayback_url)
-	if parsed.netloc == DOMAIN and '/web/' in parsed.path:
-		path_parts = parsed.path.split('/', 3)
-		if len(path_parts) >= 4:
-			return 'http://' + path_parts[3]
-	return wayback_url
+# def extract_original_url(wayback_url):
+# 	parsed = urlparse(wayback_url)
+# 	if parsed.netloc == DOMAIN and '/web/' in parsed.path:
+# 		path_parts = parsed.path.split('/', 3)
+# 		if len(path_parts) >= 4:
+# 			return 'http://' + path_parts[3]
+# 	return wayback_url
 
 def get_mime_type(url):
 	# Get the file extension
@@ -231,20 +235,36 @@ def handle_request(req):
 		
 		# Fetch the content of the archived page
 		response = requests.get(snapshot.archive_url, headers={'User-Agent': user_agent})
-		content = response.text
+		content = response.content  # Use content instead of text to handle binary data
 		print("Content fetched, length:", len(content))
 		
-		# Determine the MIME type
-		mime_type = get_mime_type(url)
+		# Determine the content type
+		content_type = response.headers.get('Content-Type', '').split(';')[0].strip()
 		
-		# Process the content based on the MIME type
-		if mime_type == 'text/html':
+		if not content_type:
+			# If no content type is provided, guess based on the URL
+			content_type, _ = mimetypes.guess_type(url)
+		
+		if not content_type:
+			# If still no content type, default to octet-stream
+			content_type = 'application/octet-stream'
+		
+		print(f"Content-Type: {content_type}")
+		
+		# Process HTML content
+		if content_type.startswith('text/html'):
+			content = content.decode('utf-8', errors='replace')
 			processed_content = process_html_content(content)
-		else:
-			processed_content = content  # Don't process non-HTML content
+			return processed_content, response.status_code, {'Content-Type': 'text/html'}
 		
-		# Return the processed content, status code, and appropriate Content-Type
-		return processed_content, response.status_code, {'Content-Type': mime_type}
+		# For text-based content types, decode and return as string
+		elif content_type.startswith('text/') or content_type in ['application/javascript', 'application/json']:
+			decoded_content = content.decode('utf-8', errors='replace')
+			return decoded_content, response.status_code, {'Content-Type': content_type}
+		
+		# For binary content, return as-is
+		else:
+			return content, response.status_code, {'Content-Type': content_type}
 	
 	except Exception as e:
 		print("Error occurred:", str(e))

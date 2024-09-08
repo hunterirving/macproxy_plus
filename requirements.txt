@@ -5,3 +5,4 @@ Werkzeug==2.0.3
 beautifulsoup4==4.10.0
 itsdangerous==2.0.1
 requests==2.26.0
+Pillow
