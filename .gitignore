@@ -13,4 +13,6 @@ extensions/config.py
 *.mp4
 *.flim
 
+# Other
+extensions/youtube/*
 extensions/reddit/cached_images/*
