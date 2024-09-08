@@ -14,5 +14,5 @@ extensions/config.py
 *.flim
 
 # Other
-extensions/youtube/*
+extensions/youtube
 extensions/reddit/cached_images/*
