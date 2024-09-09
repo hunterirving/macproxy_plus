@@ -8,6 +8,7 @@ import calendar
 import re
 import mimetypes
 import os
+from urllib.parse import urljoin
 
 DOMAIN = "web.archive.org"
 TARGET_DATE = "19960101"
@@ -72,40 +73,22 @@ def get_override_status():
 	global override_active
 	return override_active
 
-def transform_url(url):
-    # If the URL is relative and starts with '/web/', prepend the DOMAIN
-    if url.startswith('/web/'):
-        return f'http://{DOMAIN}{url}'
+def transform_url(url, base_url):
+	# If the URL is absolute, return it as is
+	if url.startswith(('http://', 'https://')):
+		return url
 
-    # If the URL is relative (doesn't start with a scheme or '/'), leave it as is
-    if not re.match(r'^[a-zA-Z]+://|^/', url):
-        return url
+	# If the URL starts with '/web/', it's a wayback machine URL
+	if url.startswith('/web/'):
+		return f'http://{DOMAIN}{url}'
 
-    # Parse the URL
-    parsed = urlparse(url)
+	# If it's a relative URL
+	if not url.startswith('/'):
+		# Join it with the base URL
+		return urljoin(base_url, url)
 
-    # Regular expression to match Wayback Machine URL pattern
-    wayback_pattern = r'^/web/(\d{14})/(.+)'
-
-    # Case 1: URL starts with "/web/" followed by 14 digits
-    if parsed.path.startswith('/web/'):
-        match = re.match(wayback_pattern, parsed.path)
-        if match:
-            original_url = match.group(2)
-            return convert_ftp_to_http(original_url)
-
-    # Case 2: Full Wayback Machine URL
-    if parsed.netloc == DOMAIN:
-        match = re.match(wayback_pattern, parsed.path)
-        if match:
-            original_url = match.group(2)
-            # Ensure the URL has a scheme
-            if not re.match(r'^[a-zA-Z]+://', original_url):
-                original_url = 'http://' + original_url
-            return convert_ftp_to_http(original_url)
-
-    # If it's not a Wayback Machine URL, still convert FTP to HTTP
-    return convert_ftp_to_http(url)
+	# For other cases (like URLs starting with '/'), join with the base URL
+	return urljoin(base_url, url)
 
 def convert_ftp_to_http(url):
 	parsed = urlparse(url)
@@ -115,20 +98,29 @@ def convert_ftp_to_http(url):
 		return urlunparse(new_parsed)
 	return url
 
-def process_html_content(content):
-    soup = BeautifulSoup(content, 'html.parser')
-    
-    # Process all links
-    for a in soup.find_all('a', href=True):
-        a['href'] = transform_url(a['href'])
-    
-    # Process all images, scripts, and other resources
-    for tag in soup.find_all(['img', 'script', 'link'], src=True):
-        tag['src'] = transform_url(tag['src'])
-    for tag in soup.find_all('link', href=True):
-        tag['href'] = transform_url(tag['href'])
-    
-    return str(soup)
+def process_html_content(content, base_url):
+	soup = BeautifulSoup(content, 'html.parser')
+	
+	# Process all links
+	for a in soup.find_all('a', href=True):
+		a['href'] = transform_url(a['href'], base_url)
+	
+	# Process all images, scripts, and other resources
+	for tag in soup.find_all(['img', 'script', 'link', 'iframe'], src=True):
+		tag['src'] = transform_url(tag['src'], base_url)
+	for tag in soup.find_all('link', href=True):
+		tag['href'] = transform_url(tag['href'], base_url)
+	
+	# Handle background images in style attributes
+	for tag in soup.find_all(style=True):
+		style = tag['style']
+		urls = re.findall(r'url\([\'"]?([^\'" \)]+)', style)
+		for url in urls:
+			new_url = transform_url(url, base_url)
+			style = style.replace(url, new_url)
+		tag['style'] = style
+
+	return str(soup)
 
 # def extract_original_url(wayback_url):
 # 	parsed = urlparse(wayback_url)
@@ -208,7 +200,6 @@ def handle_request(req):
 									  selected_year=selected_year,
 									  current_year=current_year,
 									  date_update_message=date_update_message), 200
-
 	# If we're here, override is active and we're handling a non-wayback domain
 	try:
 		print('Handling request for:', req.url)
@@ -235,7 +226,7 @@ def handle_request(req):
 		
 		# Fetch the content of the archived page
 		response = requests.get(snapshot.archive_url, headers={'User-Agent': user_agent})
-		content = response.content  # Use content instead of text to handle binary data
+		content = response.content
 		print("Content fetched, length:", len(content))
 		
 		# Determine the content type
@@ -254,7 +245,7 @@ def handle_request(req):
 		# Process HTML content
 		if content_type.startswith('text/html'):
 			content = content.decode('utf-8', errors='replace')
-			processed_content = process_html_content(content)
+			processed_content = process_html_content(content, url)
 			return processed_content, response.status_code, {'Content-Type': 'text/html'}
 		
 		# For text-based content types, decode and return as string

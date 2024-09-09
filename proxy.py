@@ -9,6 +9,7 @@ import io
 from PIL import Image
 import hashlib
 import shutil
+import mimetypes
 
 os.environ['FLASK_ENV'] = 'development'
 app = Flask(__name__)
@@ -54,23 +55,46 @@ for ext in ENABLED_EXTENSIONS:
 	extensions[ext] = module
 	domain_to_extension[module.DOMAIN] = module
 
+def is_image_url(url):
+	mime_type, _ = mimetypes.guess_type(url)
+	return mime_type and mime_type.startswith('image/')
+
+from PIL import Image
+import io
+
 def optimize_image(image_data):
-	img = Image.open(io.BytesIO(image_data))
-	
-	# Calculate the new size while maintaining aspect ratio
-	width, height = img.size
-	if width > MAX_WIDTH or height > MAX_HEIGHT:
-		ratio = min(MAX_WIDTH / width, MAX_HEIGHT / height)
-		new_size = (int(width * ratio), int(height * ratio))
-		img = img.resize(new_size, Image.LANCZOS)
-	
-	# Convert to black and white
-	img = img.convert("1")
-	
-	# Save as 1-bit GIF
-	output = io.BytesIO()
-	img.save(output, format="GIF", optimize=True)
-	return output.getvalue()
+    img = Image.open(io.BytesIO(image_data))
+    
+    # Convert to RGBA if it's not already
+    if img.mode != 'RGBA':
+        img = img.convert('RGBA')
+    
+    # Create a white background
+    background = Image.new('RGBA', img.size, (255, 255, 255, 255))
+    
+    # Alpha composite the image onto the background
+    img = Image.alpha_composite(background, img)
+    
+    # Convert back to RGB
+    img = img.convert('RGB')
+    
+    # Calculate the new size while maintaining aspect ratio
+    width, height = img.size
+    if width > MAX_WIDTH or height > MAX_HEIGHT:
+        ratio = min(MAX_WIDTH / width, MAX_HEIGHT / height)
+        new_size = (int(width * ratio), int(height * ratio))
+        img = img.resize(new_size, Image.LANCZOS)
+    
+    # Convert to grayscale
+    img = img.convert("L")
+    
+    # Apply Floyd-Steinberg dithering and convert to 1-bit black and white
+    img = img.convert("1", dither=Image.FLOYDSTEINBERG)
+    
+    # Save as 1-bit GIF
+    output = io.BytesIO()
+    img.save(output, format="GIF", optimize=True)
+    return output.getvalue()
 
 def fetch_and_cache_image(url):
 	try:
@@ -116,6 +140,13 @@ def replace_image_urls(content, base_url):
 @app.route("/cached_image/<path:filename>")
 def serve_cached_image(filename):
 	return send_from_directory(CACHE_DIR, filename, mimetype='image/gif')
+
+def handle_image_request(url):
+	cached_url = fetch_and_cache_image(url)
+	if cached_url:
+		return send_from_directory(CACHE_DIR, os.path.basename(cached_url), mimetype='image/gif')
+	else:
+		return abort(404, "Image not found or could not be processed")
 
 @app.route("/", defaults={"path": "/"}, methods=["GET", "POST"])
 @app.route("/<path:path>", methods=["GET", "POST"])
@@ -180,6 +211,11 @@ def handle_matching_extension(matching_extension):
 
 def process_response_with_image_caching(response, base_url):
 	print(f"Processing response for URL: {base_url}")
+	
+	# Check if the response is for an image URL
+	if is_image_url(base_url):
+		return handle_image_request(base_url)
+	
 	if isinstance(response, tuple):
 		if len(response) == 3:
 			content, status_code, headers = response
@@ -201,20 +237,41 @@ def process_response_with_image_caching(response, base_url):
 	content_type = headers.get('Content-Type', '').lower()
 	print(f"Content-Type: {content_type}")
 
-	# Apply image caching for HTML content
-	if content_type.startswith('text/html'):
-		print("Applying image caching to HTML content")
+	# List of content types that should not be transcoded
+	non_transcode_types = [
+		'application/octet-stream',
+		'application/pdf',
+		'application/zip',
+		'application/x-zip-compressed',
+		'application/x-rar-compressed',
+		'application/x-tar',
+		'application/x-gzip',
+		'application/x-bzip2',
+		'application/x-7z-compressed',
+		'application/vnd.openxmlformats-officedocument',
+		'application/vnd.ms-excel',
+		'application/vnd.ms-powerpoint',
+		'application/msword',
+		'audio/',
+		'video/',
+	]
+
+	# Check if content type is in the list of non-transcode types
+	should_transcode = not any(content_type.startswith(t) for t in non_transcode_types)
+
+	if should_transcode:
+		print("Transcoding content")
 		if isinstance(content, bytes):
 			content = content.decode('utf-8', errors='replace')
-		content = replace_image_urls(content, base_url)
-		content = transcode_html(content, app.config["DISABLE_CHAR_CONVERSION"])
-	elif content_type.startswith('text/'):
-		print("Processing text content")
-		if isinstance(content, bytes):
-			content = content.decode('utf-8', errors='replace')
+		
+		# Apply image caching for HTML-like content
+		if content_type.startswith('text/html') or '<html' in content.lower():
+			print("Applying image caching to HTML content")
+			content = replace_image_urls(content, base_url)
+		
 		content = transcode_html(content, app.config["DISABLE_CHAR_CONVERSION"])
 	else:
-		print(f"Content is not text ({content_type}), passing through unchanged")
+		print(f"Content type {content_type} should not be transcoded, passing through unchanged")
 
 	response = Response(content, status_code)
 	for key, value in headers.items():
@@ -230,6 +287,9 @@ def handle_default_request():
 	print(f"Handling default request for URL: {url}")
 	
 	try:
+		if is_image_url(url):
+			return handle_image_request(url)
+		
 		resp = send_request(url, headers)
 		content = resp.content
 		status_code = resp.status_code

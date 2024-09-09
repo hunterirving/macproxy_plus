@@ -10,86 +10,18 @@ import shutil
 import mimetypes
 
 DOMAIN = "reddit.com"
-CACHE_DIR = os.path.join(os.path.dirname(__file__), "cached_images")
-image_counter = 0
-MAX_WIDTH = 512
-MAX_HEIGHT = 342
-
-def clear_image_cache():
-	global image_counter
-	if os.path.exists(CACHE_DIR):
-		shutil.rmtree(CACHE_DIR)
-	os.makedirs(CACHE_DIR, exist_ok=True)
-	image_counter = 0
-
-# Call this function when the extension is loaded
-clear_image_cache()
-
-def optimize_image(image_data):
-	img = Image.open(io.BytesIO(image_data))
-	
-	# Calculate the new size while maintaining aspect ratio
-	width, height = img.size
-	if width > MAX_WIDTH or height > MAX_HEIGHT:
-		ratio = min(MAX_WIDTH / width, MAX_HEIGHT / height)
-		new_size = (int(width * ratio), int(height * ratio))
-		img = img.resize(new_size, Image.LANCZOS)
-	
-	# Convert to black and white
-	img = img.convert("1")
-	
-	# Save as 1-bit GIF
-	output = io.BytesIO()
-	img.save(output, format="GIF", optimize=True)
-	return output.getvalue()
-
-def fetch_and_cache_image(url):
-	global image_counter
-	try:
-		response = requests.get(url, stream=True)
-		response.raise_for_status()
-		
-		# Optimize the image
-		optimized_image = optimize_image(response.content)
-		
-		# Increment the counter and use it for the filename
-		image_counter += 1
-		file_name = f"img_{image_counter:04d}.gif"
-		file_path = os.path.join(CACHE_DIR, file_name)
-		
-		with open(file_path, 'wb') as f:
-			f.write(optimized_image)
-		
-		return f"http://reddit.com/cached_image/{file_name}"
-	except Exception as e:
-		print(f"Error processing image: {str(e)}")
-		return None
 
 def handle_request(request):
 	if request.method != 'GET':
 		return Response("Only GET requests are supported", status=405)
 
 	url = request.url
-	if url.startswith("http://reddit.com/cached_image/"):
-		file_name = url.split("/")[-1]
-		file_path = os.path.join(CACHE_DIR, file_name)
-		if os.path.exists(file_path):
-			with open(file_path, 'rb') as f:
-				return Response(f.read(), mimetype='image/gif')
-		else:
-			return Response("Image not found", status=404)
-
+	
 	if not url.startswith(('http://old.reddit.com', 'https://old.reddit.com')):
 		url = url.replace("reddit.com", "old.reddit.com", 1)
 	
-	headers = {
-		'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
-		'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-		'Accept-Language': 'en-US,en;q=0.5',
-	}
-	
 	try:
-		resp = requests.get(url, headers=headers, allow_redirects=True, timeout=10)
+		resp = requests.get(url, allow_redirects=True, timeout=10)
 		resp.raise_for_status()
 		return process_content(resp.content, url)
 	except requests.RequestException as e:
@@ -201,12 +133,10 @@ def process_content(content, url):
 							enclosing_a = img.find_parent('a')
 							if enclosing_a and enclosing_a.has_attr('href'):
 								img_src = enclosing_a['href']
-								cached_url = fetch_and_cache_image(img_src)
-								if cached_url:
-									new_img = new_soup.new_tag('img', src=cached_url, width="50", height="40")
-									d.append(new_img)
-									d.append(" ")  # Add space between images
-					
+								new_img = new_soup.new_tag('img', src=img_src, width="50", height="40")
+								d.append(new_img)
+								d.append(" ")  # Add space between images
+				
 					# Add post content if it exists
 					usertext_body = thing.find('div', class_='usertext-body')
 					if usertext_body:
