@@ -2,6 +2,7 @@ from flask import request
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
+import mimetypes
 
 DOMAIN = "hunterirving.com"
 
@@ -33,7 +34,13 @@ def handle_request(req):
 			response = requests.get(url)
 			response.raise_for_status()  # Raise an exception for bad status codes
 			
-			# Try to decode with UTF-8 first, then fall back to ISO-8859-1
+			# Check if the content is an image	
+			content_type = response.headers.get('Content-Type', '')
+			if content_type.startswith('image/'):
+				# For images, return the content as-is
+				return response.content, response.status_code, {'Content-Type': content_type}
+
+			# For non-image content, proceed with HTML processing
 			try:
 				html_content = response.content.decode('utf-8')
 			except UnicodeDecodeError:

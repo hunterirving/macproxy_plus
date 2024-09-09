@@ -10,6 +10,7 @@ from PIL import Image
 import hashlib
 import shutil
 import mimetypes
+from image_utils import is_image_url, fetch_and_cache_image, CACHE_DIR
 
 os.environ['FLASK_ENV'] = 'development'
 app = Flask(__name__)
@@ -20,11 +21,6 @@ ERROR_HEADER = "[[Macproxy Encountered an Error]]"
 
 # Global variable to store the override extension
 override_extension = None
-
-# Global variables for image caching
-CACHE_DIR = os.path.join(os.path.dirname(__file__), "cached_images")
-MAX_WIDTH = 512
-MAX_HEIGHT = 342
 
 # User-Agent string
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36"
@@ -55,88 +51,6 @@ for ext in ENABLED_EXTENSIONS:
 	extensions[ext] = module
 	domain_to_extension[module.DOMAIN] = module
 
-def is_image_url(url):
-	mime_type, _ = mimetypes.guess_type(url)
-	return mime_type and mime_type.startswith('image/')
-
-from PIL import Image
-import io
-
-def optimize_image(image_data):
-    img = Image.open(io.BytesIO(image_data))
-    
-    # Convert to RGBA if it's not already
-    if img.mode != 'RGBA':
-        img = img.convert('RGBA')
-    
-    # Create a white background
-    background = Image.new('RGBA', img.size, (255, 255, 255, 255))
-    
-    # Alpha composite the image onto the background
-    img = Image.alpha_composite(background, img)
-    
-    # Convert back to RGB
-    img = img.convert('RGB')
-    
-    # Calculate the new size while maintaining aspect ratio
-    width, height = img.size
-    if width > MAX_WIDTH or height > MAX_HEIGHT:
-        ratio = min(MAX_WIDTH / width, MAX_HEIGHT / height)
-        new_size = (int(width * ratio), int(height * ratio))
-        img = img.resize(new_size, Image.LANCZOS)
-    
-    # Convert to grayscale
-    img = img.convert("L")
-    
-    # Apply Floyd-Steinberg dithering and convert to 1-bit black and white
-    img = img.convert("1", dither=Image.FLOYDSTEINBERG)
-    
-    # Save as 1-bit GIF
-    output = io.BytesIO()
-    img.save(output, format="GIF", optimize=True)
-    return output.getvalue()
-
-def fetch_and_cache_image(url):
-	try:
-		print(f"Fetching image: {url}")
-		response = requests.get(url, stream=True, headers={"User-Agent": USER_AGENT})
-		response.raise_for_status()
-		
-		# Generate a unique filename based on the URL
-		file_name = hashlib.md5(url.encode()).hexdigest() + ".gif"
-		file_path = os.path.join(CACHE_DIR, file_name)
-		
-		# If the file doesn't exist, optimize and cache it
-		if not os.path.exists(file_path):
-			print(f"Optimizing and caching image: {url}")
-			optimized_image = optimize_image(response.content)
-			with open(file_path, 'wb') as f:
-				f.write(optimized_image)
-		else:
-			print(f"Image already cached: {url}")
-		
-		cached_url = f"/cached_image/{file_name}"
-		print(f"Cached URL: {cached_url}")
-		return cached_url
-	except Exception as e:
-		print(f"Error processing image: {url}, Error: {str(e)}")
-		return None
-
-def replace_image_urls(content, base_url):
-	soup = BeautifulSoup(content, 'html.parser')
-	for img in soup.find_all('img'):
-		src = img.get('src')
-		if src:
-			full_url = urljoin(base_url, src)
-			print(f"Processing image: {full_url}")
-			cached_url = fetch_and_cache_image(full_url)
-			if cached_url:
-				img['src'] = cached_url
-				print(f"Replaced image URL: {src} -> {cached_url}")
-			else:
-				print(f"Failed to cache image: {full_url}")
-	return str(soup)
-
 @app.route("/cached_image/<path:filename>")
 def serve_cached_image(filename):
 	return send_from_directory(CACHE_DIR, filename, mimetype='image/gif')
@@ -161,11 +75,16 @@ def handle_request(path):
 
 	override_response = handle_override_extension(scheme)
 	if override_response is not None:
-		return process_response_with_image_caching(override_response, request.url)
+		return process_response(override_response, request.url)
 
 	matching_extension = find_matching_extension(host)
 	if matching_extension:
-		return handle_matching_extension(matching_extension)
+		response = handle_matching_extension(matching_extension)
+		return process_response(response, request.url)
+	
+	# Only handle image requests here if we're not using an extension
+	if is_image_url(request.url) and not (override_extension or matching_extension):
+		return handle_image_request(request.url)
 
 	return handle_default_request()
 
@@ -177,7 +96,7 @@ def handle_override_extension(scheme):
 			if scheme in ['http', 'https', 'ftp']:
 				response = extensions[extension_name].handle_request(request)
 				check_override_status(extension_name)
-				return process_response_with_image_caching(response, request.url)
+				return process_response(response, request.url)
 			else:
 				print(f"Warning: Unsupported scheme '{scheme}' for override extension.")
 		else:
@@ -206,16 +125,12 @@ def handle_matching_extension(matching_extension):
 		override_extension = matching_extension.__name__
 		print(f"Override enabled for {override_extension}")
 	
-	# Use the original request URL as the base URL
-	return process_response_with_image_caching(response, request.url)
+	# Return the response directly
+	return response
 
-def process_response_with_image_caching(response, base_url):
-	print(f"Processing response for URL: {base_url}")
-	
-	# Check if the response is for an image URL
-	if is_image_url(base_url):
-		return handle_image_request(base_url)
-	
+def process_response(response, url):
+	print(f"Processing response for URL: {url}")
+
 	if isinstance(response, tuple):
 		if len(response) == 3:
 			content, status_code, headers = response
@@ -227,7 +142,6 @@ def process_response_with_image_caching(response, base_url):
 			status_code = 200
 			headers = {}
 	elif isinstance(response, Response):
-		print("Response is already a Flask Response object")
 		return response
 	else:
 		content = response
@@ -236,6 +150,14 @@ def process_response_with_image_caching(response, base_url):
 
 	content_type = headers.get('Content-Type', '').lower()
 	print(f"Content-Type: {content_type}")
+
+	if content_type.startswith('image/'):
+		# For image content, use the fetch_and_cache_image function
+		cached_url = fetch_and_cache_image(url, content)
+		if cached_url:
+			return send_from_directory(CACHE_DIR, os.path.basename(cached_url), mimetype='image/gif')
+		else:
+			return abort(404, "Image could not be processed")
 
 	# List of content types that should not be transcoded
 	non_transcode_types = [
@@ -264,11 +186,6 @@ def process_response_with_image_caching(response, base_url):
 		if isinstance(content, bytes):
 			content = content.decode('utf-8', errors='replace')
 		
-		# Apply image caching for HTML-like content
-		if content_type.startswith('text/html') or '<html' in content.lower():
-			print("Applying image caching to HTML content")
-			content = replace_image_urls(content, base_url)
-		
 		content = transcode_html(content, app.config["DISABLE_CHAR_CONVERSION"])
 	else:
 		print(f"Content type {content_type} should not be transcoded, passing through unchanged")
@@ -280,6 +197,7 @@ def process_response_with_image_caching(response, base_url):
 	print("Finished processing response")
 	return response
 
+# handle requests not handled by extensions
 def handle_default_request():
 	url = request.url.replace("https://", "http://", 1)
 	headers = prepare_headers()
@@ -287,14 +205,11 @@ def handle_default_request():
 	print(f"Handling default request for URL: {url}")
 	
 	try:
-		if is_image_url(url):
-			return handle_image_request(url)
-		
 		resp = send_request(url, headers)
 		content = resp.content
 		status_code = resp.status_code
 		headers = dict(resp.headers)
-		return process_response_with_image_caching((content, status_code, headers), url)
+		return process_response((content, status_code, headers), url)
 	except Exception as e:
 		print(f"Error in handle_default_request: {str(e)}")
 		return abort(500, ERROR_HEADER + str(e))

@@ -10,6 +10,11 @@ import shutil
 import mimetypes
 
 DOMAIN = "reddit.com"
+USER_AGENT = None
+
+def set_user_agent(user_agent):
+	global USER_AGENT
+	USER_AGENT = user_agent
 
 def handle_request(request):
 	if request.method != 'GET':
@@ -21,7 +26,8 @@ def handle_request(request):
 		url = url.replace("reddit.com", "old.reddit.com", 1)
 	
 	try:
-		resp = requests.get(url, allow_redirects=True, timeout=10)
+		headers = {'User-Agent': USER_AGENT} if USER_AGENT else {}
+		resp = requests.get(url, headers=headers, allow_redirects=True, timeout=10)
 		resp.raise_for_status()
 		return process_content(resp.content, url)
 	except requests.RequestException as e:

@@ -10,14 +10,8 @@ def handle_request(request):
 		return handle_surprise(request)
 	else:
 		url = request.url.replace("https://", "http://", 1)
-		headers = {
-			"Accept": request.headers.get("Accept"),
-			"Accept-Language": request.headers.get("Accept-Language"),
-			"Referer": request.headers.get("Referer"),
-			"User-Agent": request.headers.get("User-Agent"),
-		}
 
-		resp = requests.get(url, headers=headers)
+		resp = requests.get(url)
 		
 		# If it's the homepage, modify the page structure
 		if url == "http://wiby.me" or url == "http://wiby.me/":
@@ -42,7 +36,9 @@ def get_final_surprise_url():
 		if resp.status_code in (301, 302, 303, 307, 308):
 			url = urljoin(url, resp.headers['Location'])
 			redirects += 1
-		elif resp.status_code == 200:
+			continue
+
+		if resp.status_code == 200:
 			soup = BeautifulSoup(resp.content, 'html.parser')
 			meta_tag = soup.find("meta", attrs={"http-equiv": "refresh"})
 
@@ -52,12 +48,9 @@ def get_final_surprise_url():
 				if len(parts) > 1:
 					url = urljoin(url, parts[1].strip("'\""))
 					redirects += 1
-				else:
-					return url
-			else:
-				return url
-		else:
-			return url
+					continue
+
+		return url
 
 	return url
 

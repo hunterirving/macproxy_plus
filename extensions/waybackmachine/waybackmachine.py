@@ -1,5 +1,5 @@
 from flask import request, render_template_string
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import urlparse, urlunparse, urljoin
 from waybackpy import WaybackMachineCDXServerAPI
 import requests
 from bs4 import BeautifulSoup
@@ -8,7 +8,6 @@ import calendar
 import re
 import mimetypes
 import os
-from urllib.parse import urljoin
 
 DOMAIN = "web.archive.org"
 TARGET_DATE = "19960101"
@@ -73,22 +72,22 @@ def get_override_status():
 	global override_active
 	return override_active
 
-def transform_url(url, base_url):
-	# If the URL is absolute, return it as is
-	if url.startswith(('http://', 'https://')):
-		return url
+# def transform_url(url, base_url):
+# 	# If the URL is absolute, return it as is
+# 	if url.startswith(('http://', 'https://')):
+# 		return url
 
-	# If the URL starts with '/web/', it's a wayback machine URL
-	if url.startswith('/web/'):
-		return f'http://{DOMAIN}{url}'
+# 	# If the URL starts with '/web/', it's a wayback machine URL
+# 	if url.startswith('/web/'):
+# 		return f'http://{DOMAIN}{url}'
 
-	# If it's a relative URL
-	if not url.startswith('/'):
-		# Join it with the base URL
-		return urljoin(base_url, url)
+# 	# If it's a relative URL
+# 	if not url.startswith('/'):
+# 		# Join it with the base URL
+# 		return urljoin(base_url, url)
 
-	# For other cases (like URLs starting with '/'), join with the base URL
-	return urljoin(base_url, url)
+# 	# For other cases (like URLs starting with '/'), join with the base URL
+# 	return urljoin(base_url, url)
 
 def convert_ftp_to_http(url):
 	parsed = urlparse(url)
@@ -103,32 +102,59 @@ def process_html_content(content, base_url):
 	
 	# Process all links
 	for a in soup.find_all('a', href=True):
-		a['href'] = transform_url(a['href'], base_url)
+		a['href'] = extract_original_url(a['href'], base_url)
 	
 	# Process all images, scripts, and other resources
 	for tag in soup.find_all(['img', 'script', 'link', 'iframe'], src=True):
-		tag['src'] = transform_url(tag['src'], base_url)
+		tag['src'] = extract_original_url(tag['src'], base_url)
 	for tag in soup.find_all('link', href=True):
-		tag['href'] = transform_url(tag['href'], base_url)
+		tag['href'] = extract_original_url(tag['href'], base_url)
 	
 	# Handle background images in style attributes
 	for tag in soup.find_all(style=True):
 		style = tag['style']
 		urls = re.findall(r'url\([\'"]?([^\'" \)]+)', style)
 		for url in urls:
-			new_url = transform_url(url, base_url)
+			new_url = extract_original_url(url, base_url)
 			style = style.replace(url, new_url)
 		tag['style'] = style
 
 	return str(soup)
 
-# def extract_original_url(wayback_url):
-# 	parsed = urlparse(wayback_url)
-# 	if parsed.netloc == DOMAIN and '/web/' in parsed.path:
-# 		path_parts = parsed.path.split('/', 3)
-# 		if len(path_parts) >= 4:
-# 			return 'http://' + path_parts[3]
-# 	return wayback_url
+def extract_original_url(url, base_url):
+    # Parse the base_url to extract the original domain and path
+    parsed_base = urlparse(base_url)
+    original_domain = parsed_base.netloc.split(':', 1)[0]  # Remove port if present
+    original_path = ''
+    
+    if original_domain == DOMAIN:
+        # Extract the original URL from the Wayback Machine URL
+        parts = parsed_base.path.split('/', 4)
+        if len(parts) >= 5:
+            original_domain = parts[3]
+            original_path = '/'.join(parts[4:]).rsplit('/', 1)[0]
+    else:
+        # If it's not a Wayback Machine URL, use the path from parsed_base
+        original_path = '/'.join(parsed_base.path.split('/')[:-1])  # Remove the file name from the path
+
+    # Case 1: If the URL is already absolute and not a Wayback Machine URL, return it as is
+    if url.startswith(('http://', 'https://')) and DOMAIN not in url:
+        return url
+
+    # Case 2: If it's a Wayback Machine URL, extract the original URL
+    if url.startswith(('/web/', f'http://{DOMAIN}/web/', f'https://{DOMAIN}/web/')):
+        parts = url.split('/', 5)
+        if len(parts) >= 6:
+            return f'http://{parts[5]}'
+        return url
+
+    # Case 3: If it's a root-relative URL (starts with '/')
+    if url.startswith('/') and not url.startswith('/web/'):
+        return f'http://{original_domain}{url}'
+
+    # Case 4: For relative URLs, join with the original domain and path
+    full_base = f'http://{original_domain}{original_path}/'
+    return urljoin(full_base, url)
 
 def get_mime_type(url):
 	# Get the file extension
@@ -200,6 +226,7 @@ def handle_request(req):
 									  selected_year=selected_year,
 									  current_year=current_year,
 									  date_update_message=date_update_message), 200
+
 	# If we're here, override is active and we're handling a non-wayback domain
 	try:
 		print('Handling request for:', req.url)
@@ -232,6 +259,9 @@ def handle_request(req):
 		# Determine the content type
 		content_type = response.headers.get('Content-Type', '').split(';')[0].strip()
 		
+		if content_type.startswith('image/'):
+				return content, response.status_code, {'Content-Type': content_type}
+
 		if not content_type:
 			# If no content type is provided, guess based on the URL
 			content_type, _ = mimetypes.guess_type(url)
