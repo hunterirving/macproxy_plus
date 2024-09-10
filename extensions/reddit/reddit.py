@@ -33,6 +33,64 @@ def handle_request(request):
 	except requests.RequestException as e:
 		return Response(f"An error occurred: {str(e)}", status=500)
 
+def add_br_after_comments(new_soup, ol):
+	children = ol.find_all('li', recursive=False)
+	for li in children:
+		inner_ol = li.find('ol', recursive=False)
+		if inner_ol:
+			# Add <br> before the inner ol
+			inner_ol.insert_before(new_soup.new_tag('br'))
+			add_br_after_comments(new_soup, inner_ol)
+		
+		# Always add <br> after the current li
+		li.insert_after(new_soup.new_tag('br'))
+
+def process_comments(comments_area, parent_element, new_soup, depth=0):
+	for comment in comments_area.find_all('div', class_='thing', recursive=False):
+		if 'comment' not in comment.get('class', []):
+			continue  # Skip if it's not a comment
+
+		comment_div = new_soup.new_tag('div')
+		if depth > 0:
+			blockquote = new_soup.new_tag('blockquote')
+			parent_element.append(blockquote)
+			blockquote.append(comment_div)
+		else:
+			parent_element.append(comment_div)
+
+		# Author, points, and time
+		author_element = comment.find('a', class_='author')
+		author = author_element.string if author_element else 'Unknown'
+		
+		score_element = comment.find('span', class_='score unvoted')
+		points = score_element.string.split()[0] if score_element else '0'
+		
+		time_element = comment.find('time', class_='live-timestamp')
+		time_passed = time_element.string if time_element else 'Unknown time'
+		
+		header = new_soup.new_tag('p')
+		header.string = f"{author} | {points} points | {time_passed}"
+		comment_div.append(header)
+
+		# Comment body
+		comment_body = comment.find('div', class_='md')
+		if comment_body:
+			body_text = comment_body.get_text().strip()
+			if body_text:
+				body_p = new_soup.new_tag('p')
+				body_p.string = body_text
+				comment_div.append(body_p)
+
+		# Extra space between comments
+		comment_div.append(new_soup.new_tag('br'))
+
+		# Process child comments
+		child_area = comment.find('div', class_='child')
+		if child_area:
+			child_comments = child_area.find('div', class_='sitetable listing')
+			if child_comments:
+				process_comments(child_comments, comment_div, new_soup, depth + 1)
+
 def process_content(content, url):
 	soup = BeautifulSoup(content, 'html.parser')
 	
@@ -152,6 +210,17 @@ def process_content(content, url):
 							d.append(md_content)
 					
 					body.append(d)
+		
+		# Add an <hr> before comments
+		body.append(new_soup.new_tag('hr'))
+
+		# Add comments
+		comments_area = soup.find('div', class_='sitetable nestedlisting')
+		if comments_area:
+			comments_div = new_soup.new_tag('div')
+			body.append(comments_div)
+			process_comments(comments_area, comments_div, new_soup)
+
 	else:
 		ol = new_soup.new_tag('ol')
 		body.append(ol)
@@ -201,5 +270,5 @@ def process_content(content, url):
 					
 					li.append(font)
 					ol.append(li)
-	
+	print(str(new_soup))
 	return str(new_soup), 200
