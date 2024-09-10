@@ -33,18 +33,6 @@ def handle_request(request):
 	except requests.RequestException as e:
 		return Response(f"An error occurred: {str(e)}", status=500)
 
-def add_br_after_comments(new_soup, ol):
-	children = ol.find_all('li', recursive=False)
-	for li in children:
-		inner_ol = li.find('ol', recursive=False)
-		if inner_ol:
-			# Add <br> before the inner ol
-			inner_ol.insert_before(new_soup.new_tag('br'))
-			add_br_after_comments(new_soup, inner_ol)
-		
-		# Always add <br> after the current li
-		li.insert_after(new_soup.new_tag('br'))
-
 def process_comments(comments_area, parent_element, new_soup, depth=0):
 	for comment in comments_area.find_all('div', class_='thing', recursive=False):
 		if 'comment' not in comment.get('class', []):
@@ -69,7 +57,10 @@ def process_comments(comments_area, parent_element, new_soup, depth=0):
 		time_passed = time_element.string if time_element else 'Unknown time'
 		
 		header = new_soup.new_tag('p')
-		header.string = f"{author} | {points} points | {time_passed}"
+		author_b = new_soup.new_tag('b')
+		author_b.string = author
+		header.append(author_b)
+		header.string = f"{author_b} | {points} points | {time_passed}"
 		comment_div.append(header)
 
 		# Comment body
@@ -210,8 +201,10 @@ def process_content(content, url):
 							d.append(md_content)
 					
 					body.append(d)
-		
-		# Add an <hr> before comments
+
+		# Add a <br> before the <hr> that divides comments and the original post
+		body.append(new_soup.new_tag('br'))
+		body.append(new_soup.new_tag('br'))
 		body.append(new_soup.new_tag('hr'))
 
 		# Add comments
@@ -220,10 +213,9 @@ def process_content(content, url):
 			comments_div = new_soup.new_tag('div')
 			body.append(comments_div)
 			process_comments(comments_area, comments_div, new_soup)
-
 	else:
-		ol = new_soup.new_tag('ol')
-		body.append(ol)
+		ul = new_soup.new_tag('ul')
+		body.append(ul)
 		
 		site_table = soup.find('div', id='siteTable')
 		if site_table:
@@ -269,6 +261,35 @@ def process_content(content, url):
 					font.append(new_soup.new_tag('br'))
 					
 					li.append(font)
-					ol.append(li)
-	print(str(new_soup))
+					ul.append(li)
+
+		# Add navigation buttons
+		nav_buttons = soup.find('div', class_='nav-buttons')
+		if nav_buttons:
+			center_tag = new_soup.new_tag('center')
+			body.append(center_tag)
+
+			nav_table = new_soup.new_tag('table', width="100%")
+			nav_tr = new_soup.new_tag('tr')
+			nav_left = new_soup.new_tag('td', align="center")
+			nav_right = new_soup.new_tag('td', align="center")
+			nav_tr.append(nav_left)
+			nav_tr.append(nav_right)
+			nav_table.append(nav_tr)
+			center_tag.append(nav_table)
+
+			prev_button = nav_buttons.find('span', class_='prev-button')
+			if prev_button and prev_button.find('a'):
+				prev_link = prev_button.find('a')
+				new_prev = new_soup.new_tag('a', href=prev_link['href'].replace('old.reddit.com', 'reddit.com'))
+				new_prev.string = '&lt; prev'
+				nav_left.append(new_prev)
+
+			next_button = nav_buttons.find('span', class_='next-button')
+			if next_button and next_button.find('a'):
+				next_link = next_button.find('a')
+				new_next = new_soup.new_tag('a', href=next_link['href'].replace('old.reddit.com', 'reddit.com'))
+				new_next.string = 'next &gt;'
+				nav_right.append(new_next)
+
 	return str(new_soup), 200
