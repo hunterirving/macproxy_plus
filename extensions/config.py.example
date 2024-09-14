@@ -20,7 +20,7 @@ ENABLED_EXTENSIONS = [
 	#"reddit",
 	#"waybackmachine",
 	#"weather",
-	#"websim",
+	#"websimulator",
 	#"wiby",
 	#"wikipedia",
 	#"notyoutube"

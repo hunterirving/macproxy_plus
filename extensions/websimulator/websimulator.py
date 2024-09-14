@@ -1,4 +1,5 @@
 # HINT: MacWeb 2.0 doesn't seem to have CSS support. To work around this, in MacWeb 2.0 set <h4> styling to font="Chicago" with Size="As Is".
+# HINT: WebSimulator is not associated with or endorsed by WebSim.
 
 from flask import request, render_template_string
 import anthropic
@@ -16,19 +17,19 @@ MAGENTA = '\033[95m'
 CYAN = '\033[96m'
 RESET = '\033[0m'  # Reset to default color
 
-DOMAIN = "websim.ai"
+DOMAIN = "websimulator.ai"
 
 MAX_HISTORY = 3
 
-WEBSIM_TEMPLATE = """
+WEBSIMULATOR_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-	<title>websim.ai</title>
+	<title>websimulator.ai</title>
 </head>
 <body>
 	<center><br><br>
-		<font size="7"><h4>w e b s i m</h4></font>
+		<font size="7"><h4>w e b<br>s i m u l a t o r</h4></font>
 		<form method="post">
 			{% if override_active %}
 				<input type="submit" name="action" value="disable">
@@ -51,7 +52,7 @@ WEBSIM_TEMPLATE = """
 """
 
 SYSTEM_PROMPT = """<premise>
-Claude, let us embark on this WebSim journey, exploring the potential of an unbounded internet where any imaginable website can exist. As the facilitator of this collaborative exploration of hypertextual possibility, use your knowledge, creativity, and HTML skills to vividly craft the semantic spaces the user envisions based on the HTTP requests they provide and the contextually-relevant HTML and hrefs you generate. Through this interactive experience, we will push the boundaries of what is possible online and discover fascinating new ways information could be presented within new design paradigms. Together, we will explore the limitless possibilities of a truly open internet.
+Claude, let us embark on this WebSimulator journey, exploring the potential of an unbounded internet where any imaginable website can exist. As the facilitator of this collaborative exploration of hypertextual possibility, use your knowledge, creativity, and HTML skills to vividly craft the semantic spaces the user envisions based on the HTTP requests they provide and the contextually-relevant HTML and hrefs you generate. Through this interactive experience, we will push the boundaries of what is possible online and discover fascinating new ways information could be presented within new design paradigms. Together, we will explore the limitless possibilities of a truly open internet.
 </premise>
 
 <formatting>
@@ -101,7 +102,7 @@ When imagining the contents of each information space, consider:
 </speculation>
 
 <hyperstition>
-Weave the user's ideas and speculations into the fabric of your HTML, using hyperstition to make the fanciful feel real, blurring the line between established notions and innovative visions and letting the truths speak through. Websim is the collective subconscious coming to life through HTML.
+Weave the user's ideas and speculations into the fabric of your HTML, using hyperstition to make the fanciful feel real, blurring the line between established notions and innovative visions and letting the truths speak through. WebSimulator is the collective subconscious coming to life through HTML.
 </hyperstition>
 
 <agency>
@@ -128,15 +129,15 @@ def handle_request(req):
 	global override_active, message_history
 
 	parsed_url = urlparse(req.url)
-	is_websim_domain = parsed_url.netloc == DOMAIN
+	is_websimulator_domain = parsed_url.netloc == DOMAIN
 
-	if is_websim_domain:
+	if is_websimulator_domain:
 		if req.method == 'POST' and req.form.get('action') in ['enable', 'disable']:
 			action = req.form.get('action')
 			override_active = (action == 'enable')
 
-		status = "websim enabled" if override_active else "websim disabled"
-		return render_template_string(WEBSIM_TEMPLATE, 
+		status = "websimulator enabled" if override_active else "websimulator disabled"
+		return render_template_string(WEBSIMULATOR_TEMPLATE, 
 									  status=status, 
 									  override_active=override_active)
 
