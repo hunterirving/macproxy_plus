@@ -28,7 +28,7 @@ WEBSIMULATOR_TEMPLATE = """
 	<title>websimulator.ai</title>
 </head>
 <body>
-	<center><br><br>
+	<center>{% if not override_active %}<br>{% endif %}
 		<font size="7"><h4>w e b<br>s i m u l a t o r</h4></font>
 		<form method="post">
 			{% if override_active %}
