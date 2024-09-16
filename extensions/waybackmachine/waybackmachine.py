@@ -122,39 +122,47 @@ def process_html_content(content, base_url):
 	return str(soup)
 
 def extract_original_url(url, base_url):
-    # Parse the base_url to extract the original domain and path
-    parsed_base = urlparse(base_url)
-    original_domain = parsed_base.netloc.split(':', 1)[0]  # Remove port if present
-    original_path = ''
-    
-    if original_domain == DOMAIN:
-        # Extract the original URL from the Wayback Machine URL
-        parts = parsed_base.path.split('/', 4)
-        if len(parts) >= 5:
-            original_domain = parts[3]
-            original_path = '/'.join(parts[4:]).rsplit('/', 1)[0]
-    else:
-        # If it's not a Wayback Machine URL, use the path from parsed_base
-        original_path = '/'.join(parsed_base.path.split('/')[:-1])  # Remove the file name from the path
+	# Parse the base_url to extract the original domain and path
+	parsed_base = urlparse(base_url)
+	original_domain = parsed_base.netloc.split(':', 1)[0]  # Remove port if present
+	original_path = ''
+	
+	if original_domain == DOMAIN:
+		# Extract the original URL from the Wayback Machine URL
+		parts = parsed_base.path.split('/', 4)
+		if len(parts) >= 5:
+			original_domain = parts[3]
+			original_path = '/'.join(parts[4:]).rsplit('/', 1)[0]
+	else:
+		# If it's not a Wayback Machine URL, use the path from parsed_base
+		original_path = '/'.join(parsed_base.path.split('/')[:-1])  # Remove the file name from the path
 
-    # Case 1: If the URL is already absolute and not a Wayback Machine URL, return it as is
-    if url.startswith(('http://', 'https://')) and DOMAIN not in url:
-        return url
+	# Case 1: If the URL is already absolute and not a Wayback Machine URL, return it as is
+	if url.startswith(('http://', 'https://')) and DOMAIN not in url:
+		return url
 
-    # Case 2: If it's a Wayback Machine URL, extract the original URL
-    if url.startswith(('/web/', f'http://{DOMAIN}/web/', f'https://{DOMAIN}/web/')):
-        parts = url.split('/', 5)
-        if len(parts) >= 6:
-            return f'http://{parts[5]}'
-        return url
+	# Case 2: If it's a Wayback Machine URL, extract the original URL
+	if url.startswith(('/web/', f'http://{DOMAIN}/web/', f'https://{DOMAIN}/web/')):
+		parts = url.split('/', 5)
+		if len(parts) >= 6:
+			# Handle the case with .click? in the URL
+			if '.click?' in parts[5]:
+				click_parts = parts[5].split('.click?', 1)
+				if len(click_parts) > 1:
+					print(click_parts)
+					return click_parts[1]
+			# Handle regular Wayback Machine URLs
+			elif '//' in parts[5]:
+				return 'http://' + parts[5].split('//', 1)[1]
+		return url
 
-    # Case 3: If it's a root-relative URL (starts with '/')
-    if url.startswith('/') and not url.startswith('/web/'):
-        return f'http://{original_domain}{url}'
+	# Case 3: If it's a root-relative URL (starts with '/')
+	if url.startswith('/') and not url.startswith('/web/'):
+		return f'http://{original_domain}{url}'
 
-    # Case 4: For relative URLs, join with the original domain and path
-    full_base = f'http://{original_domain}{original_path}/'
-    return urljoin(full_base, url)
+	# Case 4: For relative URLs, join with the original domain and path
+	full_base = f'http://{original_domain}{original_path}/'
+	return urljoin(full_base, url)
 
 def get_mime_type(url):
 	# Get the file extension
