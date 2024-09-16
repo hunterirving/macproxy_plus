@@ -498,8 +498,8 @@ fresh hacks every day                 /___/
 		older_link_div = nav_links.find('div', class_='nav-previous')
 		newer_link_div = nav_links.find('div', class_='nav-next')
 		
-		older_html = f'<a href="{older_link_div.a["href"]}">← Older posts</a>' if older_link_div else ''
-		newer_html = f'<a href="{newer_link_div.a["href"]}">Newer posts →</a>' if newer_link_div else ''
+		older_html = f'<a href="{older_link_div.a["href"]}">Older posts</a>' if older_link_div else ''
+		newer_html = f'<a href="{newer_link_div.a["href"]}">Newer posts</a>' if newer_link_div else ''
 		
 		new_html = f'''
 		<table width="100%">
