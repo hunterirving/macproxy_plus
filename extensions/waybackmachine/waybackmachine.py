@@ -105,40 +105,54 @@ def process_html_content(content, base_url):
 	return str(soup)
 
 def extract_original_url(url, base_url):
-    # Parse the base_url to extract the original domain and path
-    parsed_base = urlparse(base_url)
-    original_domain = parsed_base.netloc.split(':', 1)[0]  # Remove port if present
-    original_path = parsed_base.path
+	# Parse the URL and base_url
+	parsed_url = urlparse(url)
+	parsed_base = urlparse(base_url)
 
-    # If original_path doesn't end with a '/', add it
-    if original_path and not original_path.endswith('/'):
-        original_path += '/'
+	# If the URL is already a full URL and not a Wayback Machine URL, return it
+	if parsed_url.scheme and parsed_url.netloc and DOMAIN not in parsed_url.netloc:
+		return url
 
-    # Case 1: If the URL is already absolute and not a Wayback Machine URL, return it as is
-    if url.startswith(('http://', 'https://')) and DOMAIN not in url:
-        return url
+	# If it's a Wayback Machine URL, extract the original URL
+	if DOMAIN in parsed_base.netloc or url.startswith(('/web/', f'http://{DOMAIN}/web/', f'https://{DOMAIN}/web/')):
+		# Handle full Wayback Machine URLs
+		if parsed_url.path.startswith('/web/'):
+			parts = parsed_url.path.split('/', 3)
+			if len(parts) >= 4:
+				original_url = parts[3]
+				if '://' in original_url:
+					return original_url
+				else:
+					return f'http://{original_url}'
+		
+		# Handle cases where the URL is split between base_url and url
+		full_path = urljoin(parsed_base.path, parsed_url.path)
+		parts = full_path.split('/', 3)
+		if len(parts) >= 4:
+			original_url = parts[3]
+			if '://' in original_url:
+				return original_url
+			else:
+				return f'http://{original_url}'
 
-    # Case 2: If it's a Wayback Machine URL, extract the original URL
-    if url.startswith(('/web/', f'http://{DOMAIN}/web/', f'https://{DOMAIN}/web/')):
-        parts = url.split('/', 5)
-        if len(parts) >= 6:
-            # Handle the case with .click? in the URL
-            if '.click?' in parts[5]:
-                click_parts = parts[5].split('.click?', 1)
-                if len(click_parts) > 1:
-                    return click_parts[1]
-            # Handle regular Wayback Machine URLs
-            elif '//' in parts[5]:
-                return 'http://' + parts[5].split('//', 1)[1]
-        return url
+	# If it's a relative URL, join it with the base URL
+	joined_url = urljoin(base_url, url)
+	parsed_joined = urlparse(joined_url)
+	
+	# Remove any unexpected parts (like port numbers) from the netloc
+	clean_netloc = parsed_joined.netloc.split(':')[0]
+	
+	# Reconstruct the URL
+	clean_url = urlunparse((
+		parsed_joined.scheme or 'http',
+		clean_netloc,
+		parsed_joined.path,
+		parsed_joined.params,
+		parsed_joined.query,
+		parsed_joined.fragment
+	))
 
-    # Case 3: If it's a root-relative URL (starts with '/')
-    if url.startswith('/') and not url.startswith('/web/'):
-        return f'http://{original_domain}{url}'
-
-    # Case 4: For relative URLs, join with the original domain and full path
-    full_base = f'http://{original_domain}{original_path}'
-    return urljoin(full_base, url)
+	return clean_url
 
 def get_mime_type(url):
 	# Get the file extension
@@ -216,6 +230,7 @@ def handle_request(req):
 		print('Handling request for:', req.url)
 		
 		url = req.url
+		base_url = req.base_url
 		
 		user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 		cdx_api = WaybackMachineCDXServerAPI(url, user_agent)
