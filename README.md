@@ -1,6 +1,8 @@
-## Extensions
+## MacProxy Plus
 
-This fork of Macproxy adds support for "extensions", which extend Macproxy's functionality via custom modules. Extensions are stored in the ```extensions``` directory and can be enabled or disabled via a ```config.py``` file.
+This fork of <a href="https://github.com/rdmark/macproxy">MacProxy</a> adds support for 'extensions', which intercept requests for specific domains and route them through custom handling.
+
+Each extension has its own folder within the `extensions` directory. Extensions can be individually enabled or disabled via the `config.py` file in the root directory.
 
 ### Enabling Extensions
 
@@ -49,8 +51,29 @@ Once enabled, Macproxy will reroute requests to ```http://chatgpt.com``` to this
 
 ### Other Extensions
 
-#### hackaday.com
-Serves a paired-down, text-only version of the site, complete with articles, comments, and search functionality.
+#### Claude (Anthropic)
+For the discerning LLM connoisseur.
+
+#### Weather
+Get the forecast for any zip code in the US.
+
+#### Wikipedia
+Read any of over 6 million encyclopedia articles - complete with clickable links and search function.
+
+#### Reddit
+Browse any subreddit or the Reddit homepage, with support for nested comments and downloadable images... in dithered black and white.
+
+#### WayBack Machine
+Enter any date between January 1st, 1996 and today, then browse the web as it existed at that point in time. Includes full download support for images and other files backed up by the Internet Archive.
+
+#### Web Simulator
+Type a URL that doesn't exist into the address bar, and Anthropic's Claude 3.5 Sonnet will interpret the domain and any query parameters to generate an imagined version of that page on the fly. Each HTTP request is serialized and sent to the AI, along with the full HTML of the last 3 pages you visited, allowing you to explore a vast, interconnected alternate reality Internet where the only limit is your imagination.
+
+#### (not) YouTube
+A legally distinct parody of YouTube, which uses the fantastic homebrew application <a href="macflim.com/macflim2">MacFlim</a> (created by Fred Stark) to encode video files as a series of dithered black and white frames.
+
+#### Hackaday
+Serves a pared-down, text-only version of hackaday.com, complete with articles, comments, and search functionality.
 
 #### npr.org
 Serves articles from the text-only version of the site (```text.npr.org```) and transforms relative urls into absolute urls for compatibility with MacWeb 2.0.
@@ -60,7 +83,11 @@ Fixes an issue where clicking "surprise me..." would not redirect users to the f
 
 <hr>
 
-## Macproxy
+#### (pre-fork version of the readme follows below)
+
+<hr>
+
+## Macproxy 
 
 A simple HTTP proxy script for putting early computers on the Web. Despite its name, there is nothing Mac specific about this proxy. It was originally designed with compatibility with the MacWeb web browser in mind, but has been tested on a variety of vintage web browsers since.
 
