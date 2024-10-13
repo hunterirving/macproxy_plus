@@ -9,7 +9,7 @@ MacProxy Plus also converts images to dithered, black and white GIFs, appropriat
 ### Demonstration Video (on YouTube)
 
 <a href="https://youtu.be/f1v1gWLHcOk" target="_blank">
-  <img src="./readme_images/youtube_thumbnail.jpg" alt="Teaching an Old Mac New Tricks">
+  <img src="./readme_images/youtube_thumbnail.jpg" alt="Teaching an Old Mac New Tricks" width="400">
 </a>
 
 ### Enabling Extensions
