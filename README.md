@@ -6,6 +6,12 @@ Each extension has its own folder within the `extensions` directory. Extensions 
 
 MacProxy Plus also converts images to dithered, black and white GIFs, appropriately sized for vintage Macintoshes.
 
+### Demonstration Video (on YouTube)
+
+[![Teaching an Old Mac New Tricks](./readme_images/youtube_thumbnail.jpg)](https://youtu.be/f1v1gWLHcOk)
+
+
+
 ### Enabling Extensions
 
 To enable extensions, follow these steps:
