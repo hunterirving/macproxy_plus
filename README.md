@@ -2,7 +2,7 @@
 
 This fork of <a href="https://github.com/rdmark/macproxy">MacProxy</a> adds support for 'extensions', which intercept requests for specific domains and route them through custom handling.
 
-Each extension has its own folder within the `extensions` directory. Extensions can be individually enabled or disabled via the `config.py` file in the root directory.
+Each extension has its own folder within the `extensions` directory. Extensions can be individually enabled or disabled via a `config.py` file in the root of the `extensions` directory.
 
 MacProxy Plus also converts images to dithered, black and white GIFs, appropriately sized for vintage Macintoshes.
 
