@@ -1,10 +1,6 @@
 ## MacProxy Plus
 
-This fork of <a href="https://github.com/rdmark/macproxy">MacProxy</a> adds support for 'extensions', which intercept requests for specific domains and route them through custom handling.
-
-Each extension has its own folder within the `extensions` directory. Extensions can be individually enabled or disabled via a `config.py` file in the root of the `extensions` directory.
-
-MacProxy Plus also converts images to dithered, black and white GIFs, appropriately sized for vintage Macintoshes.
+This fork of <a href="https://github.com/rdmark/macproxy">MacProxy</a> adds support for 'extensions', which intercept requests for specific domains and serve simple HTML interfaces, making it possible to browse the modern web from vintage hardware.
 
 ### Demonstration Video (on YouTube)
 
@@ -12,9 +8,11 @@ MacProxy Plus also converts images to dithered, black and white GIFs, appropriat
   <img src="./readme_images/youtube_thumbnail.jpg" alt="Teaching an Old Mac New Tricks" width="400">
 </a>
 
-### Enabling Extensions
+### Extensions
 
-To enable extensions, follow these steps:
+Each extension has its own folder within the `extensions` directory. Extensions can be individually enabled or disabled via a `config.py` file in the root of the `extensions` directory.
+
+To enable extensions:
 
 1. In the ```extensions``` directory, rename ```config.py.example``` to ```config.py``` :
 
@@ -31,9 +29,9 @@ To enable extensions, follow these steps:
 		]
 	```
 
-### Running Macproxy with Extensions
+### Running MacProxy Plus
 
-Run the ```start_macproxy.sh``` script as usual. If an enabled extension relies on any external packages, ```start_macproxy.sh``` will automatically install them from the extension's included ```requirements.txt``` file.
+Run the ```start_macproxy.sh``` script. If an enabled extension relies on any external packages, ```start_macproxy.sh``` will automatically install them from the extension's included ```requirements.txt``` file.
 
 ```shell
 ./start_macproxy.sh
