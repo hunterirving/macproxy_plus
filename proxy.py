@@ -192,7 +192,8 @@ def process_response(response, url):
 
 	response = Response(content, status_code)
 	for key, value in headers.items():
-		response.headers[key] = value
+		if key.lower() != 'content-encoding':
+			response.headers[key] = value
 
 	print("Finished processing response")
 	return response
