@@ -5,6 +5,7 @@ import extensions.config as config
 from image_utils import is_image_url
 import os
 import math
+from urllib.parse import urlencode
 
 DOMAIN = "kagi.com"
 OUTPUT_ENCODING = "macintosh" # change to utf-8 for modern machines
@@ -82,7 +83,7 @@ def parse_nav_items(soup, query):
 		if el.get('href'):
 			item['url'] = el['href']
 		elif el.get('formaction'):
-			item['url'] = f"{el['formaction']}?q={query}"
+			item['url'] = f"{el['formaction']}?{urlencode({'q': query})}"
 		nav_items.append(item)
 	return nav_items
 
