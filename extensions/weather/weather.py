@@ -8,37 +8,37 @@ DOMAIN = "weather.gov"
 DEFAULT_LOCATION = config.zip_code
 
 def process_html(content):
-    soup = BeautifulSoup(content, 'html.parser')
-    
-    # Create the basic HTML structure
-    html = '<html>\n<head>\n<title>National Weather Service</title>\n</head>\n<body>\n'
-    
-    # Find and process the current conditions summary
-    current_conditions = soup.find('div', id='current_conditions-summary')
-    if current_conditions:
-        current_temp = current_conditions.find('p', class_='myforecast-current')
-        current_condition = current_conditions.find('p', class_='myforecast-current-lrg')
-        if current_temp and current_condition:
-            summary = f"{current_temp.text} {current_condition.text}"
-            html += f'<center><h1>{summary}</h1></center>\n'
-    
-    # Find and process the detailed forecast
-    detailed_forecast = soup.find('div', id='detailed-forecast')
-    if detailed_forecast:
-        detailed_forecast_body = detailed_forecast.find('div', id='detailed-forecast-body')
-        if detailed_forecast_body:
-            forecast_rows = detailed_forecast_body.find_all('div', class_='row-forecast')
-            for row in forecast_rows:
-                label = row.find('div', class_='forecast-label').b.text
-                text = row.find('div', class_='forecast-text').text
-                html += f'<p><strong>{label}:</strong> {text}</p>\n<br>\n'
-        else:
-            html += str(detailed_forecast)
-    
-    # Close the HTML tags
-    html += '\n</body>\n</html>'
-    
-    return html
+	soup = BeautifulSoup(content, 'html.parser')
+	
+	# Create the basic HTML structure
+	html = '<html>\n<head>\n<title>National Weather Service</title>\n</head>\n<body>\n'
+	
+	# Find and process the current conditions summary
+	current_conditions = soup.find('div', id='current_conditions-summary')
+	if current_conditions:
+		current_temp = current_conditions.find('p', class_='myforecast-current')
+		current_condition = current_conditions.find('p', class_='myforecast-current-lrg')
+		if current_temp and current_condition:
+			summary = f"{current_temp.text} {current_condition.text}"
+			html += f'<center><h1>{summary}</h1></center>\n'
+	
+	# Find and process the detailed forecast
+	detailed_forecast = soup.find('div', id='detailed-forecast')
+	if detailed_forecast:
+		detailed_forecast_body = detailed_forecast.find('div', id='detailed-forecast-body')
+		if detailed_forecast_body:
+			forecast_rows = detailed_forecast_body.find_all('div', class_='row-forecast')
+			for row in forecast_rows:
+				label = row.find('div', class_='forecast-label').b.text
+				text = row.find('div', class_='forecast-text').text
+				html += f'<p><strong>{label}:</strong> {text}</p>\n<br>\n'
+		else:
+			html += str(detailed_forecast)
+	
+	# Close the HTML tags
+	html += '\n</body>\n</html>'
+	
+	return html
 
 def handle_request(req):
 	if req.method == 'GET':

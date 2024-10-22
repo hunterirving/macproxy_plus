@@ -18,7 +18,7 @@ ENABLED_EXTENSIONS = [
 	#"hacksburg",
 	#"hunterirving",
 	#"kagi",
-        #"mistral",
+	#"mistral",
 	#"npr",
 	#"override",
 	#"reddit",
