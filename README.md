@@ -10,14 +10,14 @@ This fork of <a href="https://github.com/rdmark/macproxy">MacProxy</a> adds supp
 
 ### Extensions
 
-Each extension has its own folder within the `extensions` directory. Extensions can be individually enabled or disabled via a `config.py` file in the root of the `extensions` directory.
+Each extension has its own folder within the `extensions` directory. Extensions can be individually enabled or disabled via a `config.py` file in the root directory.
 
 To enable extensions:
 
-1. In the ```extensions``` directory, rename ```config.py.example``` to ```config.py``` :
+1. In the root directory, rename ```config.py.example``` to ```config.py``` :
 
 	```shell
-	mv extensions/config.py.example extensions/config.py
+	mv config.py.example config.py
 	```
 
 2. In ```config.py```, enable/disable extensions by uncommenting/commenting lines in the ```ENABLED_EXTENSIONS``` list:
@@ -41,7 +41,7 @@ Run the ```start_macproxy.sh``` script. If an enabled extension relies on any ex
 
 A ChatGPT extension is provided as an example. This extension serves a simple web interface that lets users interact with OpenAI's GPT models.
 
-To enable the ChatGPT extension, open ```extensions/config.py```, uncomment the ```chatgpt``` line in the ```ENABLED_EXTENSIONS``` list, and replace ```YOUR_OPENAI_API_KEY_HERE``` with your actual OpenAI API key.
+To enable the ChatGPT extension, open ```config.py```, uncomment the ```chatgpt``` line in the ```ENABLED_EXTENSIONS``` list, and replace ```YOUR_OPENAI_API_KEY_HERE``` with your actual OpenAI API key.
 
 ```python
 open_ai_api_key = "YOUR_OPENAI_API_KEY_HERE"

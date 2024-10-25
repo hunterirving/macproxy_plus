@@ -6,8 +6,8 @@ __pycache__/
 venv/
 current
 
-# Ignore extensions configuration
-extensions/config.py
+# Ignore all instances of config.py
+**/config.py
 
 # Ignore video files
 *.mp4
@@ -15,5 +15,5 @@ extensions/config.py
 
 # Other
 extensions/youtube
-cached_images/*
+**/cached_images/
 **/.DS_Store

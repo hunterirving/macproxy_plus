@@ -7,6 +7,7 @@ import string
 import subprocess
 from flask import request, send_file, render_template_string
 from urllib.parse import urlparse, parse_qs
+import config
 
 DOMAIN = "notyoutube.com"
 EXTENSION_DIR = os.path.dirname(os.path.abspath(__file__))

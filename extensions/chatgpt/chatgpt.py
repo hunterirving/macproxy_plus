@@ -1,9 +1,9 @@
 from flask import request, render_template_string
 from openai import OpenAI
-import extensions.config as config
+import config
 
 # Initialize the OpenAI client with your API key
-client = OpenAI(api_key=config.open_ai_api_key)
+client = OpenAI(api_key=config.OPEN_AI_API_KEY)
 
 DOMAIN = "chatgpt.com"
 

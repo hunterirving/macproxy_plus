@@ -53,7 +53,7 @@ source venv/bin/activate
 
 # Gather all requirements from enabled extensions
 ALL_REQUIREMENTS=""
-for ext in $(python3 -c "import extensions.config as config; print(' '.join(config.ENABLED_EXTENSIONS))"); do
+for ext in $(python3 -c "import config; print(' '.join(config.ENABLED_EXTENSIONS))"); do
 	if test -e "extensions/$ext/requirements.txt"; then
 		ALL_REQUIREMENTS+=" -r extensions/$ext/requirements.txt"
 	fi

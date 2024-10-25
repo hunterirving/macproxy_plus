@@ -2,7 +2,7 @@ import os
 import requests
 import argparse
 from flask import Flask, request, session, g, abort, Response, send_from_directory
-from html_utils import transcode_html
+from utils.html_utils import transcode_html
 from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
 import io
@@ -10,7 +10,7 @@ from PIL import Image
 import hashlib
 import shutil
 import mimetypes
-from image_utils import is_image_url, fetch_and_cache_image, CACHE_DIR
+from utils.image_utils import is_image_url, fetch_and_cache_image, CACHE_DIR
 
 os.environ['FLASK_ENV'] = 'development'
 app = Flask(__name__)
@@ -33,12 +33,12 @@ def clear_image_cache():
 
 clear_image_cache()
 
-# Try to import config.py from the extensions folder and enable extensions
+# Try to import config.py and enable extensions
 try:
-	import extensions.config as config
+	import config
 	ENABLED_EXTENSIONS = config.ENABLED_EXTENSIONS
 except ModuleNotFoundError:
-	print("config.py not found in extensions folder, running without extensions")
+	print("config.py not found, running without extensions")
 	ENABLED_EXTENSIONS = []
 
 # Load extensions

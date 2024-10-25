@@ -3,10 +3,10 @@
 
 from flask import request, render_template_string
 import anthropic
-import extensions.config as config
+import config
 from urllib.parse import urlparse, parse_qs
 
-client = anthropic.Anthropic(api_key=config.anthropic_api_key)
+client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
 
 
 RED = '\033[91m'

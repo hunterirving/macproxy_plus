@@ -1,74 +1,74 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>{{ title }}</title>
+	<title>{{ title }}</title>
 </head>
 <body>
-  <center>
-    <h1><img src="http://text.zjm.me/kagi.gif"/></h1>
-    <form method="GET" action="/html/search">
-      <input type="text" name="q" value="{{ query }}" size="50" />
-      <input type="submit" value="Search" />
-    </form>
-    <center>
-      {% for item in nav_items %}
-        {% if item.active %}
-          <b>{{item.title}}</b>
-        {% else %}
-          <a href="{{item.url}}">{{item.title}}</a>
-        {% endif %}
-      {% endfor %}
-    </center>
-    <center>
-      {% for item in lenses %}
-        {% if item.active %}
-          <b>{{item.title}}</b>
-        {% else %}
-          <a href="{{item.url}}">{{item.title}}</a>
-        {% endif %}
-      {% endfor %}
-    </center>
-  </center>
-  <hr />
-  {% if num_results %}
-  <p>{{ num_results }}</p>
-  {% endif %}
+	<center>
+		<h1><img src="http://text.zjm.me/kagi.gif"/></h1>
+		<form method="GET" action="/html/search">
+			<input type="text" name="q" value="{{ query }}" size="50" />
+			<input type="submit" value="Search" />
+		</form>
+		<center>
+			{% for item in nav_items %}
+				{% if item.active %}
+					<b>{{item.title}}</b>
+				{% else %}
+					<a href="{{item.url}}">{{item.title}}</a>
+				{% endif %}
+			{% endfor %}
+		</center>
+		<center>
+			{% for item in lenses %}
+				{% if item.active %}
+					<b>{{item.title}}</b>
+				{% else %}
+					<a href="{{item.url}}">{{item.title}}</a>
+				{% endif %}
+			{% endfor %}
+		</center>
+	</center>
+	<hr />
+	{% if num_results %}
+	<p>{{ num_results }}</p>
+	{% endif %}
 
-  {% for result in results %}
-  <h3><a href={{result.url}}>{{result.title}}</a></h3>
-  <div>{{result.url}}</div>
-  <p>{% if result.time %}<b>{{result.time}}</b> {% endif %}{{result.desc}}</p>
-  {% endfor %}
+	{% for result in results %}
+	<h3><a href={{result.url}}>{{result.title}}</a></h3>
+	<div>{{result.url}}</div>
+	<p>{% if result.time %}<b>{{result.time}}</b> {% endif %}{{result.desc}}</p>
+	{% endfor %}
 
-  {% for row in image_results %}
-  <div>
-    {% for result in row %}
-      <a href="{{result.url}}"><img height="{{result.height}}" width="{{result.width}}" src="{{result.src}}" alt="{{result.title}}" /></a>
-    {% endfor %}
-  </div>
-  {% endfor %}
+	{% for row in image_results %}
+	<div>
+		{% for result in row %}
+			<a href="{{result.url}}"><img height="{{result.height}}" width="{{result.width}}" src="{{result.src}}" alt="{{result.title}}" /></a>
+		{% endfor %}
+	</div>
+	{% endfor %}
 
-  {% if video_results %}
-  <table>
-  {% for result in video_results %}
-    <tr>
-      <td>
-        <img src="{{result.src}}" alt="Video Thumbnail of {{result.title}}" width="240" height="180" />
-      </td>
-      <td width="10"></td>
-      <td>
-        <h3><a href={{result.url}}>{{result.title}}</a></h3>
-        <p>{% if result.time %}<b>{{result.time}}</b> {% endif %}{{result.desc}}</p>
-      </td>
-    </tr>
-  {% endfor %}
-  </table>
-  {% endif %}
+	{% if video_results %}
+	<table>
+	{% for result in video_results %}
+		<tr>
+			<td>
+				<img src="{{result.src}}" alt="Video Thumbnail of {{result.title}}" width="240" height="180" />
+			</td>
+			<td width="10"></td>
+			<td>
+				<h3><a href={{result.url}}>{{result.title}}</a></h3>
+				<p>{% if result.time %}<b>{{result.time}}</b> {% endif %}{{result.desc}}</p>
+			</td>
+		</tr>
+	{% endfor %}
+	</table>
+	{% endif %}
 
-  {% if load_more %}
-  <center>
-    <a href="{{load_more}}">More Results</a>
-  </center>
-  {% endif %}
+	{% if load_more %}
+	<center>
+		<a href="{{load_more}}">More Results</a>
+	</center>
+	{% endif %}
 </body>
 </html>
