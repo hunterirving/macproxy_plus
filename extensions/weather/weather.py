@@ -1,11 +1,11 @@
 from flask import request, redirect
 import requests
 from bs4 import BeautifulSoup
-import extensions.config as config
+import config
 import urllib.parse
 
 DOMAIN = "weather.gov"
-DEFAULT_LOCATION = config.zip_code
+DEFAULT_LOCATION = config.ZIP_CODE
 
 def process_html(content):
 	soup = BeautifulSoup(content, 'html.parser')

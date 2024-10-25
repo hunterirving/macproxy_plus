@@ -1,8 +1,8 @@
 from flask import render_template_string
 import requests
 from bs4 import BeautifulSoup
-import extensions.config as config
-from image_utils import is_image_url
+import config
+from utils.image_utils import is_image_url
 import os
 import math
 from urllib.parse import urlencode
@@ -29,7 +29,7 @@ def handle_request(req):
 		url = f"https://kagi.com/html{req.path}"
 
 	args = {
-		'token': config.kagi_session_token
+		'token': config.KAGI_SESSION_TOKEN
 	}
 
 	for key, value in req.args.items():

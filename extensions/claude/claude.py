@@ -1,14 +1,14 @@
 from flask import request, render_template_string
 import anthropic
-import extensions.config as config
+import config
 
 # Initialize the Anthropic client with your API key
-client = anthropic.Anthropic(api_key=config.anthropic_api_key)
+client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
 
 DOMAIN = "claude.ai"
 
 messages = []
-selected_model = "claude-3-5-sonnet-20240620"
+selected_model = "claude-3-5-sonnet-latest"
 previous_model = selected_model
 
 system_prompt = """Please provide your response in plain text using only ASCII characters. 
@@ -35,7 +35,7 @@ HTML_TEMPLATE = """
 		<input type="text" size="38" name="command" required autocomplete="off">
 		<input type="submit" value="Submit">
 		<select id="model" name="model">
-			<option value="claude-3-5-sonnet-20240620" {{ 'selected' if selected_model == 'claude-3-5-sonnet-20240620' else '' }}>Claude 3.5 Sonnet</option>
+			<option value="claude-3-5-sonnet-latest" {{ 'selected' if selected_model == 'claude-3-5-sonnet-latest' else '' }}>Claude 3.5 Sonnet</option>
 			<option value="claude-3-opus-20240229" {{ 'selected' if selected_model == 'claude-3-opus-20240229' else '' }}>Claude 3 Opus</option>
 			<option value="claude-3-sonnet-20240229" {{ 'selected' if selected_model == 'claude-3-sonnet-20240229' else '' }}>Claude 3 Sonnet</option>
 			<option value="claude-3-haiku-20240307" {{ 'selected' if selected_model == 'claude-3-haiku-20240307' else '' }}>Claude 3 Haiku</option>

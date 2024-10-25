@@ -2,13 +2,13 @@
 # and fill in the necessary API keys and other details.
 
 # Store API keys and other configuration details here:
-# open_ai_api_key = "YOUR_OPENAI_API_KEY_HERE"
-# anthropic_api_key = "YOUR_ANTHROPIC_API_KEY_HERE"
-# mistral_api_key = "YOUR_MISTRAL_API_KEY_HERE"
-# kagi_session_token = "YOUR_KAGI_SESSION_TOKEN_HERE"
+# OPEN_AI_API_KEY = "YOUR_OPENAI_API_KEY_HERE"
+# ANTHROPIC_API_KEY = "YOUR_ANTHROPIC_API_KEY_HERE"
+# MISTRAL_API_KEY = "YOUR_MISTRAL_API_KEY_HERE"
+# KAGI_SESSION_TOKEN = "YOUR_KAGI_SESSION_TOKEN_HERE"
 
 # Used by weather extension (which currently only works for United States)
-# zip_code = "YOUR_ZIP_CODE"
+# ZIP_CODE = "YOUR_ZIP_CODE"
 
 # Uncomment lines to enable desired extensions:
 ENABLED_EXTENSIONS = [
@@ -19,13 +19,12 @@ ENABLED_EXTENSIONS = [
 	#"hunterirving",
 	#"kagi",
 	#"mistral",
+	#"notyoutube"
 	#"npr",
-	#"override",
 	#"reddit",
 	#"waybackmachine",
 	#"weather",
 	#"websimulator",
 	#"wiby",
 	#"wikipedia",
-	#"notyoutube"
 ]

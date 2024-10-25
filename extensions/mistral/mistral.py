@@ -1,9 +1,9 @@
 from flask import request, render_template_string
 from mistralai import Mistral
-import extensions.config as config
+import config
 
 # Initialize the Mistral Client with your API key
-client = Mistral(api_key=config.mistral_api_key)
+client = Mistral(api_key=config.MISTRAL_API_KEY)
 
 DOMAIN = "chat.mistral.ai"
 
@@ -32,14 +32,14 @@ HTML_TEMPLATE = """
 </head>
 <body>
 	<form method="post" action="/">
-		<input type="text" size="38" name="command" required autocomplete="off">
-		<input type="submit" value="Submit">
 		<select id="model" name="model">
 			<option value="mistral-large-latest" {{ 'selected' if selected_model == 'mistral-large-latest' else '' }}>Mistral Large 2407 123b</option>
 			<option value="mistral-small-latest" {{ 'selected' if selected_model == 'mistral-small-latest' else '' }}>Mistral Small 2409 22b</option>
 			<option value="open-mistral-nemo" {{ 'selected' if selected_model == 'open-mistral-nemo' else '' }}>Mistral Nemo 2407 12b</option>
 			<option value="ministral-8b-latest" {{ 'selected' if selected_model == 'ministral-8b-latest' else '' }}>Ministral 2410 8b</option>
 		</select>
+		<input type="text" size="64" name="command" required autocomplete="off">
+		<input type="submit" value="Submit">
 	</form>
 	<div id="chat">
 		<p>{{ output|safe }}</p>
