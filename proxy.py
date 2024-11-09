@@ -38,8 +38,8 @@ try:
 	import config
 	ENABLED_EXTENSIONS = config.ENABLED_EXTENSIONS
 except ModuleNotFoundError:
-	print("config.py not found, running without extensions")
-	ENABLED_EXTENSIONS = []
+	print("config.py not found, exiting.")
+	quit()
 
 # Load extensions
 extensions = {}
@@ -176,6 +176,9 @@ def process_response(response, url):
 		'application/msword',
 		'audio/',
 		'video/',
+		'text/javascript',
+		'text/css',
+		'text/plain'
 	]
 
 	# Check if content type is in the list of non-transcode types
@@ -186,7 +189,7 @@ def process_response(response, url):
 		if isinstance(content, bytes):
 			content = content.decode('utf-8', errors='replace')
 		
-		content = transcode_html(content, app.config["DISABLE_CHAR_CONVERSION"])
+		content = transcode_html(content)
 	else:
 		print(f"Content type {content_type} should not be transcoded, passing through unchanged")
 
@@ -263,12 +266,5 @@ if __name__ == "__main__":
 		action="store",
 		help="The BeautifulSoup html formatter that Macproxy will use",
 	)
-	parser.add_argument(
-		"--disable-char-conversion",
-		action="store_true",
-		help="Disable the conversion of common typographic characters to ASCII",
-	)
 	arguments = parser.parse_args()
-	app.config["USER_AGENT"] = arguments.user_agent
-	app.config["DISABLE_CHAR_CONVERSION"] = arguments.disable_char_conversion
 	app.run(host="0.0.0.0", port=arguments.port, debug=False)

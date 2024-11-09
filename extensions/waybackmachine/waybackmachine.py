@@ -13,6 +13,9 @@ DOMAIN = "web.archive.org"
 TARGET_DATE = "19960101"
 date_update_message = ""
 
+# Global resource cache
+resource_cache = {}
+
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
@@ -72,104 +75,156 @@ def get_override_status():
 	global override_active
 	return override_active
 
-def convert_ftp_to_http(url):
-	parsed = urlparse(url)
-	if parsed.scheme == 'ftp':
-		# Change the scheme to 'http' and reconstruct the URL
-		new_parsed = parsed._replace(scheme='http')
-		return urlunparse(new_parsed)
-	return url
+def make_api_request(url, headers=None):
+	cache_key = url
+	if cache_key in resource_cache:
+		return resource_cache[cache_key]
+	
+	if headers is None:
+		headers = {}
+	
+	response = requests.get(url, headers=headers)
+	resource_cache[cache_key] = response
+	return response
 
-def process_html_content(content, base_url):
-	soup = BeautifulSoup(content, 'html.parser')
-	
-	# Process all links
-	for a in soup.find_all('a', href=True):
-		a['href'] = extract_original_url(a['href'], base_url)
-	
-	# Process all images, scripts, and other resources
-	for tag in soup.find_all(['img', 'script', 'link', 'iframe'], src=True):
-		tag['src'] = extract_original_url(tag['src'], base_url)
-	for tag in soup.find_all('link', href=True):
-		tag['href'] = extract_original_url(tag['href'], base_url)
-	
-	# Handle background images in style attributes
-	for tag in soup.find_all(style=True):
-		style = tag['style']
-		urls = re.findall(r'url\([\'"]?([^\'" \)]+)', style)
-		for url in urls:
-			new_url = extract_original_url(url, base_url)
-			style = style.replace(url, new_url)
-		tag['style'] = style
-
-	return str(soup)
+def get_cached_snapshot(url, target_date):
+	try:
+		user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+		cdx_api = WaybackMachineCDXServerAPI(url, user_agent)
+		target_datetime = datetime.datetime.strptime(target_date, "%Y%m%d")
+		
+		snapshots = cdx_api.snapshots()
+		snapshot = next((s for s in snapshots if datetime.datetime.strptime(s.timestamp, "%Y%m%d%H%M%S") >= target_datetime), None)
+		
+		if snapshot:
+			return snapshot.archive_url
+		return None
+	except Exception as e:
+		print(f"Cache error for {url}: {str(e)}")
+		return None
 
 def extract_original_url(url, base_url):
-	# Parse the URL and base_url
-	parsed_url = urlparse(url)
-	parsed_base = urlparse(base_url)
+	"""Extract original URL from Wayback Machine URL format"""
+	try:
+		# Skip _static resources entirely
+		if '_static/' in url:
+			return None
+			
+		# Parse the URL and base_url
+		parsed_url = urlparse(url)
+		parsed_base = urlparse(base_url)
 
-	# If the URL is already a full URL and not a Wayback Machine URL, return it
-	if parsed_url.scheme and parsed_url.netloc and DOMAIN not in parsed_url.netloc:
+		# If the URL is already a full URL and not a Wayback Machine URL, return it
+		if parsed_url.scheme and parsed_url.netloc and DOMAIN not in parsed_url.netloc:
+			return url
+
+		# Handle Wayback Machine timestamp format (web/YYYYMMDDHHMMSS)
+		timestamp_pattern = r'/web/\d{14}(?:im_|js_|cs_|fw_)?/'
+		if re.search(timestamp_pattern, url):
+			# Extract the actual URL part after the timestamp
+			match = re.search(r'/web/\d{14}(?:im_|js_|cs_|fw_)?/(?:https?://)?(.+)', url)
+			if match:
+				actual_url = match.group(1)
+				return f'http://{actual_url}' if not actual_url.startswith(('http://', 'https://')) else actual_url
+
+		# If it's a Wayback Machine URL in the base, extract the original domain
+		base_match = re.search(r'/web/\d{14}(?:im_|js_|cs_|fw_)?/(?:https?://)?([^/]+)(/.+)?', parsed_base.path)
+		if base_match:
+			base_domain = base_match.group(1)
+			# Handle relative URLs
+			if url.startswith('/'):
+				return f'http://{base_domain}{url}'
+			elif not url.startswith(('http://', 'https://')):
+				return f'http://{base_domain}/{url}'
+
+		# For relative URLs without Wayback Machine formatting
+		if not url.startswith(('http://', 'https://')):
+			if url.startswith('//'):
+				return f'http:{url}'
+			elif url.startswith('/'):
+				base_domain = parsed_base.netloc.split(':')[0]
+				return f'http://{base_domain}{url}'
+			else:
+				base_domain = parsed_base.netloc.split(':')[0]
+				base_path = os.path.dirname(parsed_base.path)
+				return f'http://{base_domain}{base_path}/{url}'
+
+		return url
+	except Exception as e:
+		print(f"Error in extract_original_url: {url} - {str(e)}")
 		return url
 
-	# If it's a Wayback Machine URL, extract the original URL
-	if DOMAIN in parsed_base.netloc or url.startswith(('/web/', f'http://{DOMAIN}/web/', f'https://{DOMAIN}/web/')):
-		# Handle full Wayback Machine URLs
-		if parsed_url.path.startswith('/web/'):
-			parts = parsed_url.path.split('/', 3)
-			if len(parts) >= 4:
-				original_url = parts[3]
-				if '://' in original_url:
-					return original_url
-				else:
-					return f'http://{original_url}'
+def process_html_content(content, base_url):
+	try:
+		soup = BeautifulSoup(content, 'html.parser')
 		
-		# Handle cases where the URL is split between base_url and url
-		full_path = urljoin(parsed_base.path, parsed_url.path)
-		parts = full_path.split('/', 3)
-		if len(parts) >= 4:
-			original_url = parts[3]
-			if '://' in original_url:
-				return original_url
+		# Remove Wayback Machine's injected elements first
+		for script in soup.find_all('script'):
+			if script.get('src'):
+				if any(x in script['src'] for x in ['/_static/', 'archive.org', 'wombat.js', 'bundle-playback.js', 'ruffle.js']):
+					script.decompose()
+			elif script.string and 'archive.org' in script.string:
+				script.decompose()
+
+		# Remove Wayback Machine styles
+		for link in soup.find_all('link', rel='stylesheet'):
+			if '/_static/' in link.get('href', ''):
+				link.decompose()
+
+		# Remove WayBack Machine toolbar and related elements
+		for element in soup.find_all(class_=lambda x: x and ('wb-' in x or 'wm-' in x)):
+			element.decompose()
+		
+		# Process frames and iframes
+		for frame in soup.find_all(['frame', 'iframe']):
+			if frame.get('src'):
+				new_src = extract_original_url(frame['src'], base_url)
+				if new_src:
+					frame['src'] = new_src
+				else:
+					frame.decompose()
+		
+		# Process all links
+		for a in soup.find_all('a', href=True):
+			new_href = extract_original_url(a['href'], base_url)
+			if new_href:
+				a['href'] = new_href
 			else:
-				return f'http://{original_url}'
+				del a['href']
+		
+		# Process all images, scripts, and other resources
+		for tag in soup.find_all(['img', 'script', 'link'], src=True):
+			new_src = extract_original_url(tag['src'], base_url)
+			if new_src:
+				tag['src'] = new_src
+			else:
+				del tag['src']
+		
+		# Process remaining href attributes
+		for tag in soup.find_all(href=True):
+			new_href = extract_original_url(tag['href'], base_url)
+			if new_href:
+				tag['href'] = new_href
+			else:
+				del tag['href']
+		
+		# Handle background images in style attributes
+		for tag in soup.find_all(style=True):
+			style = tag['style']
+			urls = re.findall(r'url\([\'"]?([^\'" \)]+)', style)
+			for url in urls:
+				new_url = extract_original_url(url, base_url)
+				if new_url:
+					style = style.replace(url, new_url)
+			tag['style'] = style
 
-	# If it's a relative URL, join it with the base URL
-	joined_url = urljoin(base_url, url)
-	parsed_joined = urlparse(joined_url)
-	
-	# Remove any unexpected parts (like port numbers) from the netloc
-	clean_netloc = parsed_joined.netloc.split(':')[0]
-	
-	# Reconstruct the URL
-	clean_url = urlunparse((
-		parsed_joined.scheme or 'http',
-		clean_netloc,
-		parsed_joined.path,
-		parsed_joined.params,
-		parsed_joined.query,
-		parsed_joined.fragment
-	))
-
-	return clean_url
-
-def get_mime_type(url):
-	# Get the file extension
-	_, ext = os.path.splitext(url)
-	
-	# If it's a .txt file, return 'text/plain'
-	if ext.lower() == '.txt':
-		return 'text/plain'
-	
-	# For other files, use the mimetypes library to guess
-	mime_type, _ = mimetypes.guess_type(url)
-	
-	# If we can't determine the MIME type, default to 'application/octet-stream'
-	return mime_type or 'application/octet-stream'
-
+		return str(soup)
+		
+	except Exception as e:
+		print(f"Error in process_html_content: {str(e)}")
+		return f"<html><body><p>Error processing content: {str(e)}</p></body></html>"
 def handle_request(req):
-	global override_active, selected_month, selected_day, selected_year, TARGET_DATE, current_year, date_update_message
+	global override_active, selected_month, selected_day, selected_year, TARGET_DATE, date_update_message
 
 	parsed_url = urlparse(req.url)
 	is_wayback_domain = parsed_url.netloc == DOMAIN
@@ -179,114 +234,83 @@ def handle_request(req):
 			action = req.form.get('action')
 			if action == 'enable':
 				override_active = True
-				date_update_message = ""  # Clear the message when enabling
+				date_update_message = ""
 			elif action == 'disable':
 				override_active = False
-				date_update_message = ""  # Clear the message when disabling
+				date_update_message = ""
 			elif action == 'set date':
-				# Always enable override when setting date
 				override_active = True
-
+				
 				selected_month = req.form.get('month')
 				selected_day = int(req.form.get('day'))
 				selected_year = int(req.form.get('year'))
 
-				# Clamp the day to the correct range for the selected month and year
 				_, last_day = calendar.monthrange(selected_year, months.index(selected_month) + 1)
 				if selected_day > last_day:
 					selected_day = last_day
 
-				# Create a datetime object for the selected date and current date
 				selected_date = datetime.datetime(selected_year, months.index(selected_month) + 1, selected_day)
 				current_date = datetime.datetime.now()
 
-				# If the selected year is the current year, clamp the date to today or earlier
 				if selected_year == current_year and selected_date > current_date:
 					selected_date = current_date
 					
-				# Update selected values
 				selected_year = selected_date.year
 				selected_month = months[selected_date.month - 1]
 				selected_day = selected_date.day
 
-				# Update TARGET_DATE
 				month_num = str(selected_date.month).zfill(2)
 				TARGET_DATE = f"{selected_year}{month_num}{str(selected_day).zfill(2)}"
 				
-				# Update the date_update_message
 				date_update_message = f"{selected_month} {selected_day}, {selected_year}"
 
 		return render_template_string(HTML_TEMPLATE, 
-									  override_active=override_active,
-									  months=months,
-									  selected_month=selected_month,
-									  selected_day=selected_day,
-									  selected_year=selected_year,
-									  current_year=current_year,
-									  date_update_message=date_update_message), 200
+								   override_active=override_active,
+								   months=months,
+								   selected_month=selected_month,
+								   selected_day=selected_day,
+								   selected_year=selected_year,
+								   current_year=current_year,
+								   date_update_message=date_update_message), 200
 
-	# If we're here, override is active and we're handling a non-wayback domain
 	try:
-		print('Handling request for:', req.url)
-		
 		url = req.url
-		base_url = req.base_url
+		print(f'Handling request for: {url}')
 		
-		user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-		cdx_api = WaybackMachineCDXServerAPI(url, user_agent)
-		
-		target_date = datetime.datetime.strptime(TARGET_DATE, "%Y%m%d")
-		
-		print(f'Searching for first snapshot after {target_date} for {url}')
-		
-		# Get an iterator of all snapshots
-		snapshots = cdx_api.snapshots()
-		
-		# Find the first snapshot after the target date
-		snapshot = next((s for s in snapshots if datetime.datetime.strptime(s.timestamp, "%Y%m%d%H%M%S") > target_date), None)
-		
-		if snapshot is None:
+		archive_url = get_cached_snapshot(url, TARGET_DATE)
+		if not archive_url:
 			raise Exception("No snapshot found after the target date")
+			
+		print(f'Found snapshot: {archive_url}')
 		
-		print('Snapshot found:', snapshot.archive_url)
+		headers = {'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+		response = make_api_request(archive_url, headers=headers)
 		
-		# Fetch the content of the archived page
-		response = requests.get(snapshot.archive_url, headers={'User-Agent': user_agent})
+		if response.status_code != 200:
+			raise Exception(f"Failed to fetch content: HTTP {response.status_code}")
+			
 		content = response.content
-		print("Content fetched, length:", len(content))
+		if not content:
+			raise Exception("Empty response received from archive")
 		
-		# Determine the content type
 		content_type = response.headers.get('Content-Type', '').split(';')[0].strip()
-		
-		if content_type.startswith('image/'):
-				return content, response.status_code, {'Content-Type': content_type}
-
-		if not content_type:
-			# If no content type is provided, guess based on the URL
-			content_type, _ = mimetypes.guess_type(url)
-		
-		if not content_type:
-			# If still no content type, default to octet-stream
-			content_type = 'application/octet-stream'
-		
 		print(f"Content-Type: {content_type}")
 		
-		# Process HTML content
+		if content_type.startswith('image/'):
+			return content, response.status_code, {'Content-Type': content_type}
+
 		if content_type.startswith('text/html'):
 			content = content.decode('utf-8', errors='replace')
 			processed_content = process_html_content(content, url)
 			return processed_content, response.status_code, {'Content-Type': 'text/html'}
 		
-		# For text-based content types, decode and return as string
 		elif content_type.startswith('text/') or content_type in ['application/javascript', 'application/json']:
 			decoded_content = content.decode('utf-8', errors='replace')
 			return decoded_content, response.status_code, {'Content-Type': content_type}
 		
-		# For binary content, return as-is
 		else:
 			return content, response.status_code, {'Content-Type': content_type}
 	
 	except Exception as e:
-		print("Error occurred:", str(e))
-		error_message = f"Error fetching archived page: {str(e)}"
-		return f"<html><body><p>{error_message}</p></body></html>", 500, {'Content-Type': 'text/html'}
+		print(f"Error occurred: {str(e)}")
+		return f"<html><body><p>Error fetching archived page: {str(e)}</p></body></html>", 500, {'Content-Type': 'text/html'}
