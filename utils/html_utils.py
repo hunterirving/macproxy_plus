@@ -26,6 +26,7 @@ class URLAwareHTMLFormatter(HTMLFormatter):
 			else:
 				yield key, self.escape(val)
 
+
 def transcode_html(html):
 	"""
 	Uses BeautifulSoup to transcode payloads of the text/html content type
@@ -41,6 +42,22 @@ def transcode_html(html):
 
 	soup = BeautifulSoup(html, "html.parser")
 	
+	# Convert all HTTPS resources to HTTP through our proxy
+	for tag in soup(['link', 'script', 'img', 'a', 'iframe']):
+		# Handle src attributes
+		if 'src' in tag.attrs:
+			if tag['src'].startswith('https://'):
+				tag['src'] = tag['src'].replace('https://', 'http://')
+			elif tag['src'].startswith('//'):  # Handle protocol-relative URLs
+				tag['src'] = 'http:' + tag['src']
+				
+		# Handle href attributes
+		if 'href' in tag.attrs:
+			if tag['href'].startswith('https://'):
+				tag['href'] = tag['href'].replace('https://', 'http://')
+			elif tag['href'].startswith('//'):  # Handle protocol-relative URLs
+				tag['href'] = 'http:' + tag['href']
+
 	if SIMPLIFY_HTML:
 		for tag in soup(TAGS_TO_STRIP):
 			tag.decompose()
@@ -48,12 +65,16 @@ def transcode_html(html):
 			for attr in ATTRIBUTES_TO_STRIP:
 				if attr in tag.attrs:
 					del tag[attr]
-	for tag in soup(["base", "a"]):
-		if "href" in tag.attrs:
-			tag["href"] = tag["href"].replace("https://", "http://")
-	for tag in soup("img"):
-		if "src" in tag.attrs:
-			tag["src"] = tag["src"].replace("https://", "http://")
+
+	# Remove any meta refresh tags that might use HTTPS
+	for tag in soup.find_all('meta', attrs={'http-equiv': 'refresh'}):
+		if 'content' in tag.attrs and 'https://' in tag['content']:
+			tag['content'] = tag['content'].replace('https://', 'http://')
+
+	# Handle CSS with inline URLs
+	for tag in soup.find_all(['style', 'link']):
+		if tag.string:
+			tag.string = tag.string.replace('https://', 'http://')
 
 	# Use the custom formatter when converting the soup back to a string
 	html = soup.decode(formatter=URLAwareHTMLFormatter())
