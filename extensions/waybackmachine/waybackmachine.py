@@ -11,7 +11,6 @@ import time
 DOMAIN = "web.archive.org"
 TARGET_DATE = "19960101"
 date_update_message = ""
-last_timestamp = None
 last_request_time = 0
 REQUEST_DELAY = 0.5  # Minimum time between requests in seconds
 
@@ -99,29 +98,88 @@ def construct_wayback_url(url, timestamp):
 	"""Construct a Wayback Machine URL with the given timestamp"""
 	return f"https://web.archive.org/web/{timestamp}/{url}"
 
-def make_archive_request(url, use_last_timestamp=True):
-	"""Make a request to the archive with rate limiting"""
-	global last_timestamp
-	
+def find_closest_snapshot(url):
+	"""Use Wayback CDX API to find closest available snapshot"""
+	try:
+		cdx_url = f"https://web.archive.org/cdx/search/cdx"
+		params = {
+			'url': url,
+			'matchType': 'prefix',
+			'limit': -1,  # Get all results
+			'from': TARGET_DATE,  # Start from our target date
+			'output': 'json',
+			'sort': 'closest',
+			'filter': '!statuscode:[500 TO 599]'  # Exclude server errors
+		}
+		
+		response = session.get(cdx_url, params=params, timeout=10)
+		if response.status_code == 200:
+			data = response.json()
+			if len(data) > 1:  # First row is header
+				# Sort snapshots to prefer earlier dates
+				snapshots = data[1:]  # Skip header row
+				target_timestamp = int(TARGET_DATE + "000000")
+				
+				# Sort by absolute difference from target date, but prefer later dates
+				snapshots.sort(key=lambda x: (
+					abs(int(x[1]) - target_timestamp),  # Primary sort: absolute distance from target
+					-int(x[1])  # Secondary sort: reverse timestamp (prefer earlier dates)
+				))
+				
+				for snapshot in snapshots:
+					timestamp = snapshot[1]
+					return timestamp
+					
+	except Exception as e:
+		print(f"Error finding snapshot: {str(e)}")
+	return TARGET_DATE + "000000"  # Return target date if no snapshot found
+
+def make_archive_request(url, follow_redirects=True, original_timestamp=None):
+	"""Make a request to the archive with rate limiting and redirect handling"""
 	rate_limit_request()
 	
 	try:
-		if use_last_timestamp and last_timestamp and '/web/' not in url:
-			wayback_url = construct_wayback_url(url, last_timestamp)
-		else:
-			wayback_url = construct_wayback_url(url, TARGET_DATE+"000000")
+		# Simply use original_timestamp if provided, otherwise find closest snapshot
+		timestamp_to_use = original_timestamp if original_timestamp else find_closest_snapshot(url)
 		
+		wayback_url = construct_wayback_url(url, timestamp_to_use)
 		print(f'Requesting: {wayback_url}')
 		response = session.get(wayback_url, timeout=10)
 		
-		# Extract and save timestamp from successful response
-		if response.status_code == 200 and not last_timestamp:
-			timestamp = extract_timestamp_from_url(response.url)
-			if timestamp:
-				last_timestamp = timestamp
-				print(f'Found timestamp: {last_timestamp}')
+		# Handle Wayback Machine redirects
+		if response.status_code == 200 and follow_redirects:
+			content = response.text
+			
+			# Check if this is a Wayback Machine redirect page
+			if 'Got an HTTP' in content and 'Redirecting to...' in content:
+				redirect_match = re.search(r'Redirecting to\.\.\.\s*\n\s*(.*?)\s*$', content, re.MULTILINE)
+				if redirect_match:
+					redirect_url = redirect_match.group(1).strip()
+					print(f'Following Wayback redirect to: {redirect_url}')
+					
+					# Make a new request to the redirect URL, maintaining original timestamp
+					return make_archive_request(
+						redirect_url,
+						follow_redirects=True,
+						original_timestamp=timestamp_to_use
+					)
+			
+			# Also check for JavaScript redirects
+			if 'window.location.replace' in content:
+				redirect_match = re.search(r'window\.location\.replace\(["\'](.+?)["\']\)', content)
+				if redirect_match:
+					redirect_url = redirect_match.group(1).strip()
+					print(f'Following JS redirect to: {redirect_url}')
+					
+					# Make a new request to the redirect URL, maintaining original timestamp
+					return make_archive_request(
+						redirect_url,
+						follow_redirects=True,
+						original_timestamp=timestamp_to_use
+					)
 		
 		return response
+		
 	except Exception as e:
 		print(f"Request failed: {str(e)}")
 		raise
@@ -192,10 +250,10 @@ def process_html_content(content, base_url):
 		return str(soup)
 	except Exception as e:
 		print(f"Error in process_html_content: {str(e)}")
-		return f"<html><body><p>Error processing content: {str(e)}</p></body></html>"
+		return content
 
 def handle_request(req):
-	global override_active, selected_month, selected_day, selected_year, TARGET_DATE, date_update_message, last_timestamp
+	global override_active, selected_month, selected_day, selected_year, TARGET_DATE, date_update_message
 
 	parsed_url = urlparse(req.url)
 	is_wayback_domain = parsed_url.netloc == DOMAIN
@@ -209,10 +267,8 @@ def handle_request(req):
 			elif action == 'disable':
 				override_active = False
 				date_update_message = ""
-				last_timestamp = None  # Reset timestamp when disabled
 			elif action == 'set date':
 				override_active = True
-				last_timestamp = None  # Reset timestamp when date changes
 				
 				selected_month = req.form.get('month')
 				selected_day = int(req.form.get('day'))
@@ -252,9 +308,6 @@ def handle_request(req):
 		
 		response = make_archive_request(url)
 		
-		if response.status_code != 200:
-			raise Exception(f"Failed to fetch content: HTTP {response.status_code}")
-			
 		content = response.content
 		if not content:
 			raise Exception("Empty response received from archive")
@@ -262,6 +315,7 @@ def handle_request(req):
 		content_type = response.headers.get('Content-Type', '').split(';')[0].strip()
 		print(f"Content-Type: {content_type}")
 		
+		# Even if it's a 404, process and return the content as it might be an archived 404 page
 		if content_type.startswith('image/'):
 			return content, response.status_code, {'Content-Type': content_type}
 
