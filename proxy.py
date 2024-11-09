@@ -194,7 +194,7 @@ def process_response(response, url):
 		if isinstance(content, bytes):
 			content = content.decode('utf-8', errors='replace')
 		
-		content = transcode_html(content)
+		content = transcode_html(content, url)
 	else:
 		print(f"Content type {content_type} should not be transcoded, passing through unchanged")
 

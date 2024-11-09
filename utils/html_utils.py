@@ -50,13 +50,15 @@ def transcode_content(content):
 	
 	return content.encode('utf-8')
 
-def transcode_html(html):
+
+def transcode_html(html, url=None):
 	"""
 	Uses BeautifulSoup to transcode payloads of the text/html content type
 	"""
 	if isinstance(html, bytes):
 		html = html.decode("utf-8", errors="replace")
 
+	# Handle character conversion regardless of whitelist status
 	if CONVERT_CHARACTERS:
 		for key, replacement in CONVERSION_TABLE.items():
 			if isinstance(replacement, bytes):
@@ -65,7 +67,7 @@ def transcode_html(html):
 
 	soup = BeautifulSoup(html, "html.parser")
 	
-	# Convert all HTTPS resources to HTTP through our proxy
+	# Always convert HTTPS to HTTP regardless of whitelist status
 	for tag in soup(['link', 'script', 'img', 'a', 'iframe']):
 		# Handle src attributes
 		if 'src' in tag.attrs:
@@ -81,7 +83,15 @@ def transcode_html(html):
 			elif tag['href'].startswith('//'):  # Handle protocol-relative URLs
 				tag['href'] = 'http:' + tag['href']
 
-	if SIMPLIFY_HTML:
+	# Check if domain is whitelisted
+	is_whitelisted = False
+	if url:
+		from urllib.parse import urlparse
+		domain = urlparse(url).netloc
+		is_whitelisted = any(domain.endswith(whitelisted) for whitelisted in WHITELISTED_DOMAINS)
+
+	# Only perform tag/attribute stripping if the domain is not whitelisted and SIMPLIFY_HTML is True
+	if SIMPLIFY_HTML and not is_whitelisted:
 		for tag in soup(TAGS_TO_STRIP):
 			tag.decompose()
 		for tag in soup():
@@ -89,12 +99,12 @@ def transcode_html(html):
 				if attr in tag.attrs:
 					del tag[attr]
 
-	# Remove any meta refresh tags that might use HTTPS
+	# Always handle meta refresh tags
 	for tag in soup.find_all('meta', attrs={'http-equiv': 'refresh'}):
 		if 'content' in tag.attrs and 'https://' in tag['content']:
 			tag['content'] = tag['content'].replace('https://', 'http://')
 
-	# Handle CSS with inline URLs
+	# Always handle CSS with inline URLs
 	for tag in soup.find_all(['style', 'link']):
 		if tag.string:
 			tag.string = tag.string.replace('https://', 'http://')
