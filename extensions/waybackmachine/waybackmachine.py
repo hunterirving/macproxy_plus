@@ -6,13 +6,21 @@ import datetime
 import calendar
 import re
 import os
+import time
 
 DOMAIN = "web.archive.org"
 TARGET_DATE = "19960101"
 date_update_message = ""
+last_timestamp = None
+last_request_time = 0
+REQUEST_DELAY = 0.5  # Minimum time between requests in seconds
 
 # Import USER_AGENT from proxy
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36"
+
+# Create a session object for persistent connections
+session = requests.Session()
+session.headers.update({'User-Agent': USER_AGENT})
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -73,9 +81,50 @@ def get_override_status():
 	global override_active
 	return override_active
 
+def rate_limit_request():
+	"""Implement rate limiting between requests"""
+	global last_request_time
+	current_time = time.time()
+	time_since_last_request = current_time - last_request_time
+	if time_since_last_request < REQUEST_DELAY:
+		time.sleep(REQUEST_DELAY - time_since_last_request)
+	last_request_time = time.time()
+
+def extract_timestamp_from_url(url):
+	"""Extract timestamp from a Wayback Machine URL"""
+	match = re.search(r'/web/(\d{14})/', url)
+	return match.group(1) if match else None
+
 def construct_wayback_url(url, timestamp):
 	"""Construct a Wayback Machine URL with the given timestamp"""
 	return f"https://web.archive.org/web/{timestamp}/{url}"
+
+def make_archive_request(url, use_last_timestamp=True):
+	"""Make a request to the archive with rate limiting"""
+	global last_timestamp
+	
+	rate_limit_request()
+	
+	try:
+		if use_last_timestamp and last_timestamp and '/web/' not in url:
+			wayback_url = construct_wayback_url(url, last_timestamp)
+		else:
+			wayback_url = construct_wayback_url(url, TARGET_DATE+"000000")
+		
+		print(f'Requesting: {wayback_url}')
+		response = session.get(wayback_url, timeout=10)
+		
+		# Extract and save timestamp from successful response
+		if response.status_code == 200 and not last_timestamp:
+			timestamp = extract_timestamp_from_url(response.url)
+			if timestamp:
+				last_timestamp = timestamp
+				print(f'Found timestamp: {last_timestamp}')
+		
+		return response
+	except Exception as e:
+		print(f"Request failed: {str(e)}")
+		raise
 
 def extract_original_url(url, base_url):
 	"""Extract original URL from Wayback Machine URL format"""
@@ -125,15 +174,10 @@ def process_html_content(content, base_url):
 		soup = BeautifulSoup(content, 'html.parser')
 		
 		# Remove Wayback Machine's injected elements
-		for element in soup.find_all(['script', 'link', 'div', 'style']):
-			if element.get('src') and any(x in element.get('src', '') for x in ['/_static/', 'archive.org', 'wombat.js', 'bundle-playback.js', 'ruffle.js']):
-				element.decompose()
-			elif element.get('href') and '/_static/' in element.get('href', ''):
-				element.decompose()
-			elif element.get('id') and any(x in element.get('id', '') for x in ['wm-ipp-base', 'wm-ipp', 'donato', 'playback']):
-				element.decompose()
-			elif element.get('class') and any('wm-' in c or 'wb-' in c for c in element.get('class', [])):
-				element.decompose()
+		for element in soup.select('script[src*="/_static/"], script[src*="archive.org"], \
+								 link[href*="/_static/"], div[id*="wm-"], div[class*="wm-"], \
+								 style[id*="wm-"], div[id*="donato"], div[id*="playback"]'):
+			element.decompose()
 
 		# Process all URLs in the document
 		for tag in soup.find_all(['a', 'img', 'script', 'link', 'iframe', 'frame']):
@@ -151,7 +195,7 @@ def process_html_content(content, base_url):
 		return f"<html><body><p>Error processing content: {str(e)}</p></body></html>"
 
 def handle_request(req):
-	global override_active, selected_month, selected_day, selected_year, TARGET_DATE, date_update_message
+	global override_active, selected_month, selected_day, selected_year, TARGET_DATE, date_update_message, last_timestamp
 
 	parsed_url = urlparse(req.url)
 	is_wayback_domain = parsed_url.netloc == DOMAIN
@@ -165,8 +209,10 @@ def handle_request(req):
 			elif action == 'disable':
 				override_active = False
 				date_update_message = ""
+				last_timestamp = None  # Reset timestamp when disabled
 			elif action == 'set date':
 				override_active = True
+				last_timestamp = None  # Reset timestamp when date changes
 				
 				selected_month = req.form.get('month')
 				selected_day = int(req.form.get('day'))
@@ -204,12 +250,7 @@ def handle_request(req):
 		url = req.url
 		print(f'Handling request for: {url}')
 		
-		# Construct Wayback URL with timestamp
-		wayback_url = construct_wayback_url(url, TARGET_DATE+"000000")
-		print(f'Requesting Wayback URL: {wayback_url}')
-		
-		headers = {'User-Agent': USER_AGENT}
-		response = requests.get(wayback_url, headers=headers)
+		response = make_archive_request(url)
 		
 		if response.status_code != 200:
 			raise Exception(f"Failed to fetch content: HTTP {response.status_code}")
