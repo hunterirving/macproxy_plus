@@ -1,3 +1,4 @@
+
 from bs4 import BeautifulSoup
 from bs4.formatter import HTMLFormatter
 import re
@@ -26,6 +27,28 @@ class URLAwareHTMLFormatter(HTMLFormatter):
 			else:
 				yield key, self.escape(val)
 
+def transcode_content(content):
+	"""
+	Convert HTTPS to HTTP in CSS or JavaScript content
+	"""
+	if isinstance(content, bytes):
+		content = content.decode('utf-8', errors='replace')
+		
+	# Simple pattern to match URLs in both CSS and JS
+	patterns = [
+		(r"""url\(['"]?(https://[^)'"]+)['"]?\)""", r"url(\1)"),  # CSS url()
+		(r'"https://', '"http://'),  # Double-quoted URLs
+		(r"'https://", "'http://"),  # Single-quoted URLs
+		(r"https://", "http://"),    # Unquoted URLs
+	]
+	
+	for pattern, replacement in patterns:
+		content = re.sub(pattern, 
+						lambda m: replacement.replace(r"\1", 
+						m.group(1).replace("https://", "http://") if len(m.groups()) > 0 else ""),
+						content)
+	
+	return content.encode('utf-8')
 
 def transcode_html(html):
 	"""

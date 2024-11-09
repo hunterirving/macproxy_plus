@@ -2,7 +2,7 @@ import os
 import requests
 import argparse
 from flask import Flask, request, session, g, abort, Response, send_from_directory
-from utils.html_utils import transcode_html
+from utils.html_utils import transcode_html, transcode_content
 from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
 import io
@@ -159,6 +159,13 @@ def process_response(response, url):
 		else:
 			return abort(404, "Image could not be processed")
 
+	# Handle CSS and JavaScript
+	if content_type in ['text/css', 'text/javascript', 'application/javascript', 'application/x-javascript']:
+		content = transcode_content(content)
+		response = Response(content, status_code)
+		response.headers['Content-Type'] = content_type
+		return response
+
 	# List of content types that should not be transcoded
 	non_transcode_types = [
 		'application/octet-stream',
@@ -176,8 +183,6 @@ def process_response(response, url):
 		'application/msword',
 		'audio/',
 		'video/',
-		'text/javascript',
-		'text/css',
 		'text/plain'
 	]
 
