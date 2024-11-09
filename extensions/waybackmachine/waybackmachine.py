@@ -1,20 +1,18 @@
 from flask import request, render_template_string
 from urllib.parse import urlparse, urlunparse, urljoin
-from waybackpy import WaybackMachineCDXServerAPI
 import requests
 from bs4 import BeautifulSoup
 import datetime
 import calendar
 import re
-import mimetypes
 import os
 
 DOMAIN = "web.archive.org"
 TARGET_DATE = "19960101"
 date_update_message = ""
 
-# Global resource cache
-resource_cache = {}
+# Import USER_AGENT from proxy
+USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36"
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -75,69 +73,37 @@ def get_override_status():
 	global override_active
 	return override_active
 
-def make_api_request(url, headers=None):
-	cache_key = url
-	if cache_key in resource_cache:
-		return resource_cache[cache_key]
-	
-	if headers is None:
-		headers = {}
-	
-	response = requests.get(url, headers=headers)
-	resource_cache[cache_key] = response
-	return response
-
-def get_cached_snapshot(url, target_date):
-	try:
-		user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-		cdx_api = WaybackMachineCDXServerAPI(url, user_agent)
-		target_datetime = datetime.datetime.strptime(target_date, "%Y%m%d")
-		
-		snapshots = cdx_api.snapshots()
-		snapshot = next((s for s in snapshots if datetime.datetime.strptime(s.timestamp, "%Y%m%d%H%M%S") >= target_datetime), None)
-		
-		if snapshot:
-			return snapshot.archive_url
-		return None
-	except Exception as e:
-		print(f"Cache error for {url}: {str(e)}")
-		return None
+def construct_wayback_url(url, timestamp):
+	"""Construct a Wayback Machine URL with the given timestamp"""
+	return f"https://web.archive.org/web/{timestamp}/{url}"
 
 def extract_original_url(url, base_url):
 	"""Extract original URL from Wayback Machine URL format"""
 	try:
-		# Skip _static resources entirely
 		if '_static/' in url:
 			return None
 			
-		# Parse the URL and base_url
 		parsed_url = urlparse(url)
 		parsed_base = urlparse(base_url)
 
-		# If the URL is already a full URL and not a Wayback Machine URL, return it
 		if parsed_url.scheme and parsed_url.netloc and DOMAIN not in parsed_url.netloc:
 			return url
 
-		# Handle Wayback Machine timestamp format (web/YYYYMMDDHHMMSS)
 		timestamp_pattern = r'/web/\d{14}(?:im_|js_|cs_|fw_)?/'
 		if re.search(timestamp_pattern, url):
-			# Extract the actual URL part after the timestamp
 			match = re.search(r'/web/\d{14}(?:im_|js_|cs_|fw_)?/(?:https?://)?(.+)', url)
 			if match:
 				actual_url = match.group(1)
 				return f'http://{actual_url}' if not actual_url.startswith(('http://', 'https://')) else actual_url
 
-		# If it's a Wayback Machine URL in the base, extract the original domain
 		base_match = re.search(r'/web/\d{14}(?:im_|js_|cs_|fw_)?/(?:https?://)?([^/]+)(/.+)?', parsed_base.path)
 		if base_match:
 			base_domain = base_match.group(1)
-			# Handle relative URLs
 			if url.startswith('/'):
 				return f'http://{base_domain}{url}'
 			elif not url.startswith(('http://', 'https://')):
 				return f'http://{base_domain}/{url}'
 
-		# For relative URLs without Wayback Machine formatting
 		if not url.startswith(('http://', 'https://')):
 			if url.startswith('//'):
 				return f'http:{url}'
@@ -158,71 +124,32 @@ def process_html_content(content, base_url):
 	try:
 		soup = BeautifulSoup(content, 'html.parser')
 		
-		# Remove Wayback Machine's injected elements first
-		for script in soup.find_all('script'):
-			if script.get('src'):
-				if any(x in script['src'] for x in ['/_static/', 'archive.org', 'wombat.js', 'bundle-playback.js', 'ruffle.js']):
-					script.decompose()
-			elif script.string and 'archive.org' in script.string:
-				script.decompose()
+		# Remove Wayback Machine's injected elements
+		for element in soup.find_all(['script', 'link', 'div', 'style']):
+			if element.get('src') and any(x in element.get('src', '') for x in ['/_static/', 'archive.org', 'wombat.js', 'bundle-playback.js', 'ruffle.js']):
+				element.decompose()
+			elif element.get('href') and '/_static/' in element.get('href', ''):
+				element.decompose()
+			elif element.get('id') and any(x in element.get('id', '') for x in ['wm-ipp-base', 'wm-ipp', 'donato', 'playback']):
+				element.decompose()
+			elif element.get('class') and any('wm-' in c or 'wb-' in c for c in element.get('class', [])):
+				element.decompose()
 
-		# Remove Wayback Machine styles
-		for link in soup.find_all('link', rel='stylesheet'):
-			if '/_static/' in link.get('href', ''):
-				link.decompose()
-
-		# Remove WayBack Machine toolbar and related elements
-		for element in soup.find_all(class_=lambda x: x and ('wb-' in x or 'wm-' in x)):
-			element.decompose()
-		
-		# Process frames and iframes
-		for frame in soup.find_all(['frame', 'iframe']):
-			if frame.get('src'):
-				new_src = extract_original_url(frame['src'], base_url)
-				if new_src:
-					frame['src'] = new_src
-				else:
-					frame.decompose()
-		
-		# Process all links
-		for a in soup.find_all('a', href=True):
-			new_href = extract_original_url(a['href'], base_url)
-			if new_href:
-				a['href'] = new_href
-			else:
-				del a['href']
-		
-		# Process all images, scripts, and other resources
-		for tag in soup.find_all(['img', 'script', 'link'], src=True):
-			new_src = extract_original_url(tag['src'], base_url)
-			if new_src:
-				tag['src'] = new_src
-			else:
-				del tag['src']
-		
-		# Process remaining href attributes
-		for tag in soup.find_all(href=True):
-			new_href = extract_original_url(tag['href'], base_url)
-			if new_href:
-				tag['href'] = new_href
-			else:
-				del tag['href']
-		
-		# Handle background images in style attributes
-		for tag in soup.find_all(style=True):
-			style = tag['style']
-			urls = re.findall(r'url\([\'"]?([^\'" \)]+)', style)
-			for url in urls:
-				new_url = extract_original_url(url, base_url)
-				if new_url:
-					style = style.replace(url, new_url)
-			tag['style'] = style
+		# Process all URLs in the document
+		for tag in soup.find_all(['a', 'img', 'script', 'link', 'iframe', 'frame']):
+			for attr in ['href', 'src']:
+				if tag.get(attr):
+					new_url = extract_original_url(tag[attr], base_url)
+					if new_url:
+						tag[attr] = new_url
+					else:
+						del tag[attr]
 
 		return str(soup)
-		
 	except Exception as e:
 		print(f"Error in process_html_content: {str(e)}")
 		return f"<html><body><p>Error processing content: {str(e)}</p></body></html>"
+
 def handle_request(req):
 	global override_active, selected_month, selected_day, selected_year, TARGET_DATE, date_update_message
 
@@ -277,14 +204,12 @@ def handle_request(req):
 		url = req.url
 		print(f'Handling request for: {url}')
 		
-		archive_url = get_cached_snapshot(url, TARGET_DATE)
-		if not archive_url:
-			raise Exception("No snapshot found after the target date")
-			
-		print(f'Found snapshot: {archive_url}')
+		# Construct Wayback URL with timestamp
+		wayback_url = construct_wayback_url(url, TARGET_DATE+"000000")
+		print(f'Requesting Wayback URL: {wayback_url}')
 		
-		headers = {'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-		response = make_api_request(archive_url, headers=headers)
+		headers = {'User-Agent': USER_AGENT}
+		response = requests.get(wayback_url, headers=headers)
 		
 		if response.status_code != 200:
 			raise Exception(f"Failed to fetch content: HTTP {response.status_code}")
