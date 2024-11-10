@@ -1,58 +1,5 @@
-# To enable extensions, rename this file to "config.py"
-# and fill in the necessary API keys and other details.
-
-# Store API keys and other configuration details here:
-# OPEN_AI_API_KEY = "YOUR_OPENAI_API_KEY_HERE"
-# ANTHROPIC_API_KEY = "YOUR_ANTHROPIC_API_KEY_HERE"
-# MISTRAL_API_KEY = "YOUR_MISTRAL_API_KEY_HERE"
-# KAGI_SESSION_TOKEN = "YOUR_KAGI_SESSION_TOKEN_HERE"
-
-# Used by weather extension (which currently only works for United States)
-# ZIP_CODE = "YOUR_ZIP_CODE"
-
-# Uncomment lines to enable desired extensions:
-ENABLED_EXTENSIONS = [
-	#"chatgpt",
-	#"claude",
-	#"hackaday",
-	#"hacksburg",
-	#"hunterirving",
-	#"kagi",
-	#"mistral",
-	#"notyoutube"
-	#"npr",
-	#"reddit",
-	#"waybackmachine",
-	#"weather",
-	#"websimulator",
-	#"wiby",
-	#"wikipedia",
-]
-
-# While SIMPLIFY_HTML is True, you can use WHITELISTED_DOMAINS to disable post-processing for
-# specific sites (only perform HTTPS -> HTTP conversion and character conversion (if CONVERT_CHARACTERS is True),
-# without otherwise modifying the page's source code).
-WHITELISTED_DOMAINS = [
-	#"example.com",
-]
-
-# Optionally, load a preset (.py file) from /presets, optimized for compatibility
-# with a specific web browser. Enabling a preset may override one or more of the
-# settings that follow below.
-# The default values target compatability with the MacWeb 2.0 browser.
-#PRESET = "wii_internet_channel"
-
-# --------------------------------------------------------------------------------------
-# *** One or more of the following settings may be overridden if you enable a preset ***
-# --------------------------------------------------------------------------------------
-
-# If True, parse HTML responses to strip specified tags and attributes.
-# If False, always return the full, unmodified HTML as served by the requested site or extension
-# (only perform HTTPS -> HTTP conversion and character conversion (if CONVERT_CHARACTERS is True),
-# without otherwise modifying the page's source code).
 SIMPLIFY_HTML = True
 
-# If SIMPLIFY_HTML is True, strip these HTML tags during processing:
 TAGS_TO_STRIP = [
 	"script",
 	"link",
@@ -61,7 +8,6 @@ TAGS_TO_STRIP = [
 	"meta"
 ]
 
-# If SIMPLIFY_HTML is True, strip these HTML attributes during processing:
 ATTRIBUTES_TO_STRIP = [
 	"style",
 	"onclick",
@@ -72,16 +18,14 @@ ATTRIBUTES_TO_STRIP = [
 	"vlink"
 ]
 
-# Process images for optimal rendering on your device/browser:
-CAN_RENDER_INLINE_IMAGES = False # Mostly used to conditionally enable landing page images (ex: waybackmachine.py)
+CAN_RENDER_INLINE_IMAGES = False
 RESIZE_IMAGES = True
-MAX_IMAGE_WIDTH = 512 # Only used if RESIZE_IMAGES is True
-MAX_IMAGE_HEIGHT = 342 # Only used if RESIZE_IMAGES is True
+MAX_IMAGE_WIDTH = 512
+MAX_IMAGE_HEIGHT = 342
 CONVERT_IMAGES = True
-CONVERT_IMAGES_TO_FILETYPE = "gif" # Only used if CONVERT_IMAGES is True
-DITHERING_ALGORITHM = "FLOYDSTEINBERG" # Only used if CONVERT_IMAGES is True and CONVERT_IMAGES_TO_FILETYPE == "gif"
+CONVERT_IMAGES_TO_FILETYPE = "gif"
+DITHERING_ALGORITHM = "FLOYDSTEINBERG"
 
-# In addition to the default web simulator prompt, add custom instructions to improve compatability with your web browser.
 WEB_SIMULATOR_PROMPT_ADDENDUM = """<formatting>
 IMPORTANT: The user's web browser only supports (most of) HTML 3.2 (you do not need to acknowledge this to the user, only understand it and use this knowledge to construct the HTML you respond with).
 Their browser has NO CSS support and NO JavaScript support. Never include <script>, <style> or inline scripting or styling in your responses. The output html will always be rendered as black on a white background, and there's no need to try to change this.
@@ -101,10 +45,8 @@ hr - always format like <hr>, and never like <hr />, as this is not supported by
 Never use script tags or style tags.
 </formatting>"""
 
-# Conditionally enable/disable use of CONVERSION_TABLE
 CONVERT_CHARACTERS = True
 
-# Convert text characters for compatability with specific browsers
 CONVERSION_TABLE = {
 	"¢": b"cent",
 	"&cent;": b"cent",

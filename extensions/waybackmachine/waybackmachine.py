@@ -1,17 +1,25 @@
 from flask import request, render_template_string
 from urllib.parse import urlparse, urlunparse, urljoin
-from waybackpy import WaybackMachineCDXServerAPI
 import requests
 from bs4 import BeautifulSoup
 import datetime
 import calendar
 import re
-import mimetypes
 import os
+import time
 
 DOMAIN = "web.archive.org"
 TARGET_DATE = "19960101"
 date_update_message = ""
+last_request_time = 0
+REQUEST_DELAY = 0.5  # Minimum time between requests in seconds
+
+# Import USER_AGENT from proxy
+USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36"
+
+# Create a session object for persistent connections
+session = requests.Session()
+session.headers.update({'User-Agent': USER_AGENT})
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -72,104 +80,180 @@ def get_override_status():
 	global override_active
 	return override_active
 
-def convert_ftp_to_http(url):
-	parsed = urlparse(url)
-	if parsed.scheme == 'ftp':
-		# Change the scheme to 'http' and reconstruct the URL
-		new_parsed = parsed._replace(scheme='http')
-		return urlunparse(new_parsed)
-	return url
+def rate_limit_request():
+	"""Implement rate limiting between requests"""
+	global last_request_time
+	current_time = time.time()
+	time_since_last_request = current_time - last_request_time
+	if time_since_last_request < REQUEST_DELAY:
+		time.sleep(REQUEST_DELAY - time_since_last_request)
+	last_request_time = time.time()
 
-def process_html_content(content, base_url):
-	soup = BeautifulSoup(content, 'html.parser')
-	
-	# Process all links
-	for a in soup.find_all('a', href=True):
-		a['href'] = extract_original_url(a['href'], base_url)
-	
-	# Process all images, scripts, and other resources
-	for tag in soup.find_all(['img', 'script', 'link', 'iframe'], src=True):
-		tag['src'] = extract_original_url(tag['src'], base_url)
-	for tag in soup.find_all('link', href=True):
-		tag['href'] = extract_original_url(tag['href'], base_url)
-	
-	# Handle background images in style attributes
-	for tag in soup.find_all(style=True):
-		style = tag['style']
-		urls = re.findall(r'url\([\'"]?([^\'" \)]+)', style)
-		for url in urls:
-			new_url = extract_original_url(url, base_url)
-			style = style.replace(url, new_url)
-		tag['style'] = style
+def extract_timestamp_from_url(url):
+	"""Extract timestamp from a Wayback Machine URL"""
+	match = re.search(r'/web/(\d{14})/', url)
+	return match.group(1) if match else None
 
-	return str(soup)
+def construct_wayback_url(url, timestamp):
+	"""Construct a Wayback Machine URL with the given timestamp"""
+	return f"https://web.archive.org/web/{timestamp}/{url}"
+
+def find_closest_snapshot(url):
+	"""Use Wayback CDX API to find closest available snapshot"""
+	try:
+		cdx_url = f"https://web.archive.org/cdx/search/cdx"
+		params = {
+			'url': url,
+			'matchType': 'prefix',
+			'limit': -1,  # Get all results
+			'from': TARGET_DATE,  # Start from our target date
+			'output': 'json',
+			'sort': 'closest',
+			'filter': '!statuscode:[500 TO 599]'  # Exclude server errors
+		}
+		
+		response = session.get(cdx_url, params=params, timeout=10)
+		if response.status_code == 200:
+			data = response.json()
+			if len(data) > 1:  # First row is header
+				# Sort snapshots to prefer earlier dates
+				snapshots = data[1:]  # Skip header row
+				target_timestamp = int(TARGET_DATE + "000000")
+				
+				# Sort by absolute difference from target date, but prefer later dates
+				snapshots.sort(key=lambda x: (
+					abs(int(x[1]) - target_timestamp),  # Primary sort: absolute distance from target
+					-int(x[1])  # Secondary sort: reverse timestamp (prefer earlier dates)
+				))
+				
+				for snapshot in snapshots:
+					timestamp = snapshot[1]
+					return timestamp
+					
+	except Exception as e:
+		print(f"Error finding snapshot: {str(e)}")
+	return TARGET_DATE + "000000"  # Return target date if no snapshot found
+
+def make_archive_request(url, follow_redirects=True, original_timestamp=None):
+	"""Make a request to the archive with rate limiting and redirect handling"""
+	rate_limit_request()
+	
+	try:
+		# Simply use original_timestamp if provided, otherwise find closest snapshot
+		timestamp_to_use = original_timestamp if original_timestamp else find_closest_snapshot(url)
+		
+		wayback_url = construct_wayback_url(url, timestamp_to_use)
+		print(f'Requesting: {wayback_url}')
+		response = session.get(wayback_url, timeout=10)
+		
+		# Handle Wayback Machine redirects
+		if response.status_code == 200 and follow_redirects:
+			content = response.text
+			
+			# Check if this is a Wayback Machine redirect page
+			if 'Got an HTTP' in content and 'Redirecting to...' in content:
+				redirect_match = re.search(r'Redirecting to\.\.\.\s*\n\s*(.*?)\s*$', content, re.MULTILINE)
+				if redirect_match:
+					redirect_url = redirect_match.group(1).strip()
+					print(f'Following Wayback redirect to: {redirect_url}')
+					
+					# Make a new request to the redirect URL, maintaining original timestamp
+					return make_archive_request(
+						redirect_url,
+						follow_redirects=True,
+						original_timestamp=timestamp_to_use
+					)
+			
+			# Also check for JavaScript redirects
+			if 'window.location.replace' in content:
+				redirect_match = re.search(r'window\.location\.replace\(["\'](.+?)["\']\)', content)
+				if redirect_match:
+					redirect_url = redirect_match.group(1).strip()
+					print(f'Following JS redirect to: {redirect_url}')
+					
+					# Make a new request to the redirect URL, maintaining original timestamp
+					return make_archive_request(
+						redirect_url,
+						follow_redirects=True,
+						original_timestamp=timestamp_to_use
+					)
+		
+		return response
+		
+	except Exception as e:
+		print(f"Request failed: {str(e)}")
+		raise
 
 def extract_original_url(url, base_url):
-	# Parse the URL and base_url
-	parsed_url = urlparse(url)
-	parsed_base = urlparse(base_url)
+	"""Extract original URL from Wayback Machine URL format"""
+	try:
+		if '_static/' in url:
+			return None
+			
+		parsed_url = urlparse(url)
+		parsed_base = urlparse(base_url)
 
-	# If the URL is already a full URL and not a Wayback Machine URL, return it
-	if parsed_url.scheme and parsed_url.netloc and DOMAIN not in parsed_url.netloc:
+		if parsed_url.scheme and parsed_url.netloc and DOMAIN not in parsed_url.netloc:
+			return url
+
+		timestamp_pattern = r'/web/\d{14}(?:im_|js_|cs_|fw_)?/'
+		if re.search(timestamp_pattern, url):
+			match = re.search(r'/web/\d{14}(?:im_|js_|cs_|fw_)?/(?:https?://)?(.+)', url)
+			if match:
+				actual_url = match.group(1)
+				return f'http://{actual_url}' if not actual_url.startswith(('http://', 'https://')) else actual_url
+
+		base_match = re.search(r'/web/\d{14}(?:im_|js_|cs_|fw_)?/(?:https?://)?([^/]+)(/.+)?', parsed_base.path)
+		if base_match:
+			base_domain = base_match.group(1)
+			if url.startswith('/'):
+				return f'http://{base_domain}{url}'
+			elif not url.startswith(('http://', 'https://')):
+				return f'http://{base_domain}/{url}'
+
+		if not url.startswith(('http://', 'https://')):
+			if url.startswith('//'):
+				return f'http:{url}'
+			elif url.startswith('/'):
+				base_domain = parsed_base.netloc.split(':')[0]
+				return f'http://{base_domain}{url}'
+			else:
+				base_domain = parsed_base.netloc.split(':')[0]
+				base_path = os.path.dirname(parsed_base.path)
+				return f'http://{base_domain}{base_path}/{url}'
+
+		return url
+	except Exception as e:
+		print(f"Error in extract_original_url: {url} - {str(e)}")
 		return url
 
-	# If it's a Wayback Machine URL, extract the original URL
-	if DOMAIN in parsed_base.netloc or url.startswith(('/web/', f'http://{DOMAIN}/web/', f'https://{DOMAIN}/web/')):
-		# Handle full Wayback Machine URLs
-		if parsed_url.path.startswith('/web/'):
-			parts = parsed_url.path.split('/', 3)
-			if len(parts) >= 4:
-				original_url = parts[3]
-				if '://' in original_url:
-					return original_url
-				else:
-					return f'http://{original_url}'
+def process_html_content(content, base_url):
+	try:
+		soup = BeautifulSoup(content, 'html.parser')
 		
-		# Handle cases where the URL is split between base_url and url
-		full_path = urljoin(parsed_base.path, parsed_url.path)
-		parts = full_path.split('/', 3)
-		if len(parts) >= 4:
-			original_url = parts[3]
-			if '://' in original_url:
-				return original_url
-			else:
-				return f'http://{original_url}'
+		# Remove Wayback Machine's injected elements
+		for element in soup.select('script[src*="/_static/"], script[src*="archive.org"], \
+								 link[href*="/_static/"], div[id*="wm-"], div[class*="wm-"], \
+								 style[id*="wm-"], div[id*="donato"], div[id*="playback"]'):
+			element.decompose()
 
-	# If it's a relative URL, join it with the base URL
-	joined_url = urljoin(base_url, url)
-	parsed_joined = urlparse(joined_url)
-	
-	# Remove any unexpected parts (like port numbers) from the netloc
-	clean_netloc = parsed_joined.netloc.split(':')[0]
-	
-	# Reconstruct the URL
-	clean_url = urlunparse((
-		parsed_joined.scheme or 'http',
-		clean_netloc,
-		parsed_joined.path,
-		parsed_joined.params,
-		parsed_joined.query,
-		parsed_joined.fragment
-	))
+		# Process all URLs in the document
+		for tag in soup.find_all(['a', 'img', 'script', 'link', 'iframe', 'frame']):
+			for attr in ['href', 'src']:
+				if tag.get(attr):
+					new_url = extract_original_url(tag[attr], base_url)
+					if new_url:
+						tag[attr] = new_url
+					else:
+						del tag[attr]
 
-	return clean_url
-
-def get_mime_type(url):
-	# Get the file extension
-	_, ext = os.path.splitext(url)
-	
-	# If it's a .txt file, return 'text/plain'
-	if ext.lower() == '.txt':
-		return 'text/plain'
-	
-	# For other files, use the mimetypes library to guess
-	mime_type, _ = mimetypes.guess_type(url)
-	
-	# If we can't determine the MIME type, default to 'application/octet-stream'
-	return mime_type or 'application/octet-stream'
+		return str(soup)
+	except Exception as e:
+		print(f"Error in process_html_content: {str(e)}")
+		return content
 
 def handle_request(req):
-	global override_active, selected_month, selected_day, selected_year, TARGET_DATE, current_year, date_update_message
+	global override_active, selected_month, selected_day, selected_year, TARGET_DATE, date_update_message
 
 	parsed_url = urlparse(req.url)
 	is_wayback_domain = parsed_url.netloc == DOMAIN
@@ -179,114 +263,74 @@ def handle_request(req):
 			action = req.form.get('action')
 			if action == 'enable':
 				override_active = True
-				date_update_message = ""  # Clear the message when enabling
+				date_update_message = ""
 			elif action == 'disable':
 				override_active = False
-				date_update_message = ""  # Clear the message when disabling
+				date_update_message = ""
 			elif action == 'set date':
-				# Always enable override when setting date
 				override_active = True
-
+				
 				selected_month = req.form.get('month')
 				selected_day = int(req.form.get('day'))
 				selected_year = int(req.form.get('year'))
 
-				# Clamp the day to the correct range for the selected month and year
 				_, last_day = calendar.monthrange(selected_year, months.index(selected_month) + 1)
 				if selected_day > last_day:
 					selected_day = last_day
 
-				# Create a datetime object for the selected date and current date
 				selected_date = datetime.datetime(selected_year, months.index(selected_month) + 1, selected_day)
 				current_date = datetime.datetime.now()
 
-				# If the selected year is the current year, clamp the date to today or earlier
 				if selected_year == current_year and selected_date > current_date:
 					selected_date = current_date
 					
-				# Update selected values
 				selected_year = selected_date.year
 				selected_month = months[selected_date.month - 1]
 				selected_day = selected_date.day
 
-				# Update TARGET_DATE
 				month_num = str(selected_date.month).zfill(2)
 				TARGET_DATE = f"{selected_year}{month_num}{str(selected_day).zfill(2)}"
 				
-				# Update the date_update_message
 				date_update_message = f"{selected_month} {selected_day}, {selected_year}"
 
 		return render_template_string(HTML_TEMPLATE, 
-									  override_active=override_active,
-									  months=months,
-									  selected_month=selected_month,
-									  selected_day=selected_day,
-									  selected_year=selected_year,
-									  current_year=current_year,
-									  date_update_message=date_update_message), 200
+								   override_active=override_active,
+								   months=months,
+								   selected_month=selected_month,
+								   selected_day=selected_day,
+								   selected_year=selected_year,
+								   current_year=current_year,
+								   date_update_message=date_update_message), 200
 
-	# If we're here, override is active and we're handling a non-wayback domain
 	try:
-		print('Handling request for:', req.url)
-		
 		url = req.url
-		base_url = req.base_url
+		print(f'Handling request for: {url}')
 		
-		user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-		cdx_api = WaybackMachineCDXServerAPI(url, user_agent)
+		response = make_archive_request(url)
 		
-		target_date = datetime.datetime.strptime(TARGET_DATE, "%Y%m%d")
-		
-		print(f'Searching for first snapshot after {target_date} for {url}')
-		
-		# Get an iterator of all snapshots
-		snapshots = cdx_api.snapshots()
-		
-		# Find the first snapshot after the target date
-		snapshot = next((s for s in snapshots if datetime.datetime.strptime(s.timestamp, "%Y%m%d%H%M%S") > target_date), None)
-		
-		if snapshot is None:
-			raise Exception("No snapshot found after the target date")
-		
-		print('Snapshot found:', snapshot.archive_url)
-		
-		# Fetch the content of the archived page
-		response = requests.get(snapshot.archive_url, headers={'User-Agent': user_agent})
 		content = response.content
-		print("Content fetched, length:", len(content))
+		if not content:
+			raise Exception("Empty response received from archive")
 		
-		# Determine the content type
 		content_type = response.headers.get('Content-Type', '').split(';')[0].strip()
-		
-		if content_type.startswith('image/'):
-				return content, response.status_code, {'Content-Type': content_type}
-
-		if not content_type:
-			# If no content type is provided, guess based on the URL
-			content_type, _ = mimetypes.guess_type(url)
-		
-		if not content_type:
-			# If still no content type, default to octet-stream
-			content_type = 'application/octet-stream'
-		
 		print(f"Content-Type: {content_type}")
 		
-		# Process HTML content
+		# Even if it's a 404, process and return the content as it might be an archived 404 page
+		if content_type.startswith('image/'):
+			return content, response.status_code, {'Content-Type': content_type}
+
 		if content_type.startswith('text/html'):
 			content = content.decode('utf-8', errors='replace')
 			processed_content = process_html_content(content, url)
 			return processed_content, response.status_code, {'Content-Type': 'text/html'}
 		
-		# For text-based content types, decode and return as string
 		elif content_type.startswith('text/') or content_type in ['application/javascript', 'application/json']:
 			decoded_content = content.decode('utf-8', errors='replace')
 			return decoded_content, response.status_code, {'Content-Type': content_type}
 		
-		# For binary content, return as-is
 		else:
 			return content, response.status_code, {'Content-Type': content_type}
 	
 	except Exception as e:
-		print("Error occurred:", str(e))
-		error_message = f"Error fetching archived page: {str(e)}"
-		return f"<html><body><p>{error_message}</p></body></html>", 500, {'Content-Type': 'text/html'}
+		print(f"Error occurred: {str(e)}")
+		return f"<html><body><p>Error fetching archived page: {str(e)}</p></body></html>", 500, {'Content-Type': 'text/html'}
