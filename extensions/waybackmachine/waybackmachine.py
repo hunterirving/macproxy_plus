@@ -12,7 +12,7 @@ DOMAIN = "web.archive.org"
 TARGET_DATE = "19960101"
 date_update_message = ""
 last_request_time = 0
-REQUEST_DELAY = 0.5  # Minimum time between requests in seconds
+REQUEST_DELAY = 0.2  # Minimum time between requests in seconds
 
 # Import USER_AGENT from proxy
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36"
@@ -185,47 +185,49 @@ def make_archive_request(url, follow_redirects=True, original_timestamp=None):
 		raise
 
 def extract_original_url(url, base_url):
-	"""Extract original URL from Wayback Machine URL format"""
-	try:
-		if '_static/' in url:
-			return None
-			
-		parsed_url = urlparse(url)
-		parsed_base = urlparse(base_url)
+    """Extract original URL from Wayback Machine URL format"""
+    try:
+        if '_static/' in url:
+            return None
 
-		if parsed_url.scheme and parsed_url.netloc and DOMAIN not in parsed_url.netloc:
-			return url
+        # If it's already a full URL without web.archive.org, return it
+        parsed_url = urlparse(url)
+        if parsed_url.scheme and parsed_url.netloc and DOMAIN not in parsed_url.netloc:
+            return url
 
-		timestamp_pattern = r'/web/\d{14}(?:im_|js_|cs_|fw_)?/'
-		if re.search(timestamp_pattern, url):
-			match = re.search(r'/web/\d{14}(?:im_|js_|cs_|fw_)?/(?:https?://)?(.+)', url)
-			if match:
-				actual_url = match.group(1)
-				return f'http://{actual_url}' if not actual_url.startswith(('http://', 'https://')) else actual_url
+        # Get the base domain from the base_url
+        base_match = re.search(r'/web/\d{14}(?:im_|js_|cs_|fw_|oe_)?/(?:https?://)?([^/]+)/?', base_url)
+        base_domain = base_match.group(1) if base_match else None
 
-		base_match = re.search(r'/web/\d{14}(?:im_|js_|cs_|fw_)?/(?:https?://)?([^/]+)(/.+)?', parsed_base.path)
-		if base_match:
-			base_domain = base_match.group(1)
-			if url.startswith('/'):
-				return f'http://{base_domain}{url}'
-			elif not url.startswith(('http://', 'https://')):
-				return f'http://{base_domain}/{url}'
+        # If the URL contains a Wayback Machine timestamp pattern
+        timestamp_pattern = r'/web/\d{14}(?:im_|js_|cs_|fw_|oe_)?/'
+        if re.search(timestamp_pattern, url):
+            match = re.search(r'/web/\d{14}(?:im_|js_|cs_|fw_|oe_)?/(?:https?://)?(.+)', url)
+            if match:
+                actual_url = match.group(1)
+                return f'http://{actual_url}' if not actual_url.startswith(('http://', 'https://')) else actual_url
 
-		if not url.startswith(('http://', 'https://')):
-			if url.startswith('//'):
-				return f'http:{url}'
-			elif url.startswith('/'):
-				base_domain = parsed_base.netloc.split(':')[0]
-				return f'http://{base_domain}{url}'
-			else:
-				base_domain = parsed_base.netloc.split(':')[0]
-				base_path = os.path.dirname(parsed_base.path)
-				return f'http://{base_domain}{base_path}/{url}'
+        # Handle relative URLs
+        if not url.startswith(('http://', 'https://')):
+            if url.startswith('//'):
+                return f'http:{url}'
+            elif url.startswith('/'):
+                # Use the base domain if we found one
+                if base_domain:
+                    return f'http://{base_domain}{url}'
+            else:
+                if base_domain:
+                    # Handle relative paths without leading slash
+                    base_path = os.path.dirname(parsed_url.path)
+                    if base_path and base_path != '/':
+                        return f'http://{base_domain}{base_path}/{url}'
+                    else:
+                        return f'http://{base_domain}/{url}'
 
-		return url
-	except Exception as e:
-		print(f"Error in extract_original_url: {url} - {str(e)}")
-		return url
+        return url
+    except Exception as e:
+        print(f"Error in extract_original_url: {url} - {str(e)}")
+        return url
 
 def process_html_content(content, base_url):
 	try:
@@ -237,11 +239,14 @@ def process_html_content(content, base_url):
 								 style[id*="wm-"], div[id*="donato"], div[id*="playback"]'):
 			element.decompose()
 
-		# List of attributes that might contain URLs
+		# Process regular URL attributes
 		url_attributes = ['href', 'src', 'background', 'data', 'poster', 'action']
+		
+		# URL pattern for CSS url() functions
+		url_pattern = r'url\([\'"]?(\/web\/\d{14}(?:im_|js_|cs_|fw_)?\/(?:https?:\/\/)?[^)]+)[\'"]?\)'
 
-		# Process all elements in the document
 		for tag in soup.find_all():
+			# Handle regular attributes
 			for attr in url_attributes:
 				if tag.has_attr(attr):
 					original_url = tag[attr]
@@ -251,16 +256,19 @@ def process_html_content(content, base_url):
 					else:
 						del tag[attr]
 
-			# Handle inline styles that might contain URLs
+			# Handle inline styles
 			if tag.has_attr('style'):
-				style = tag['style']
-				# Find URLs in CSS
-				url_pattern = r'url\([\'"]?(.*?)[\'"]?\)'
-				def replace_url(match):
-					url = match.group(1)
-					new_url = extract_original_url(url, base_url)
-					return f'url("{new_url}")' if new_url else 'url("")'
-				tag['style'] = re.sub(url_pattern, replace_url, style)
+				style_content = tag['style']
+				tag['style'] = re.sub(url_pattern, 
+					lambda m: f'url("{extract_original_url(m.group(1), base_url)}")', 
+					style_content)
+
+		# Process <style> tags
+		for style_tag in soup.find_all('style'):
+			if style_tag.string:
+				style_tag.string = re.sub(url_pattern,
+					lambda m: f'url("{extract_original_url(m.group(1), base_url)}")',
+					style_tag.string)
 
 		return str(soup)
 	except Exception as e:
