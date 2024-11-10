@@ -237,15 +237,30 @@ def process_html_content(content, base_url):
 								 style[id*="wm-"], div[id*="donato"], div[id*="playback"]'):
 			element.decompose()
 
-		# Process all URLs in the document
-		for tag in soup.find_all(['a', 'img', 'script', 'link', 'iframe', 'frame']):
-			for attr in ['href', 'src']:
-				if tag.get(attr):
-					new_url = extract_original_url(tag[attr], base_url)
+		# List of attributes that might contain URLs
+		url_attributes = ['href', 'src', 'background', 'data', 'poster', 'action']
+
+		# Process all elements in the document
+		for tag in soup.find_all():
+			for attr in url_attributes:
+				if tag.has_attr(attr):
+					original_url = tag[attr]
+					new_url = extract_original_url(original_url, base_url)
 					if new_url:
 						tag[attr] = new_url
 					else:
 						del tag[attr]
+
+			# Handle inline styles that might contain URLs
+			if tag.has_attr('style'):
+				style = tag['style']
+				# Find URLs in CSS
+				url_pattern = r'url\([\'"]?(.*?)[\'"]?\)'
+				def replace_url(match):
+					url = match.group(1)
+					new_url = extract_original_url(url, base_url)
+					return f'url("{new_url}")' if new_url else 'url("")'
+				tag['style'] = re.sub(url_pattern, replace_url, style)
 
 		return str(soup)
 	except Exception as e:
