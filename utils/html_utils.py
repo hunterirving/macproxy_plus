@@ -49,20 +49,12 @@ def transcode_content(content):
 	
 	return content.encode('utf-8')
 
-def transcode_html(html, url=None, whitelisted_domains=None, simplify_html=True, 
+def transcode_html(html, url=None, whitelisted_domains=None, simplify_html=False, 
 				  tags_to_strip=None, attributes_to_strip=None, 
-				  convert_characters=True, conversion_table=None):
+				  convert_characters=False, conversion_table=None):
 	"""
 	Uses BeautifulSoup to transcode payloads of the text/html content type
 	"""
-	if whitelisted_domains is None:
-		whitelisted_domains = []
-	if tags_to_strip is None:
-		tags_to_strip = ["script", "link", "style", "source"]
-	if attributes_to_strip is None:
-		attributes_to_strip = ["style", "onclick", "class"]
-	if conversion_table is None:
-		conversion_table = {}
 
 	if isinstance(html, bytes):
 		html = html.decode("utf-8", errors="replace")

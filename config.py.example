@@ -58,7 +58,6 @@ TAGS_TO_STRIP = [
 	"link",
 	"style",
 	"source",
-	"meta"
 ]
 
 # If SIMPLIFY_HTML is True, strip these HTML attributes during processing:

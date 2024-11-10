@@ -5,7 +5,6 @@ TAGS_TO_STRIP = [
 	"link",
 	"style",
 	"source",
-	"meta"
 ]
 
 ATTRIBUTES_TO_STRIP = [
