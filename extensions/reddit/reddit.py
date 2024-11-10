@@ -10,11 +10,7 @@ import shutil
 import mimetypes
 
 DOMAIN = "reddit.com"
-USER_AGENT = None
-
-def set_user_agent(user_agent):
-	global USER_AGENT
-	USER_AGENT = user_agent
+USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36"
 
 def handle_request(request):
 	if request.method != 'GET':
