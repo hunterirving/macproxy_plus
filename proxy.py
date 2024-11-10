@@ -12,6 +12,88 @@ import shutil
 import mimetypes
 from utils.image_utils import is_image_url, fetch_and_cache_image, CACHE_DIR
 
+def load_preset():
+	"""
+	Load preset configuration and override default settings if a preset is specified
+	"""
+	if not hasattr(config, 'PRESET') or not config.PRESET:
+		return
+
+	preset_name = config.PRESET
+	preset_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'presets', preset_name)
+	preset_file = os.path.join(preset_dir, f"{preset_name}.py")
+
+	if not os.path.exists(preset_dir):
+		print(f"Error: Preset directory not found: {preset_dir}")
+		print(f"Make sure the preset '{preset_name}' exists in the presets directory")
+		quit()
+
+	if not os.path.exists(preset_file):
+		print(f"Error: Preset file not found: {preset_file}")
+		print(f"Make sure {preset_name}.py exists in the {preset_name} directory")
+		quit()
+
+	try:
+		# Import the preset module
+		import importlib.util
+		spec = importlib.util.spec_from_file_location(preset_name, preset_file)
+		preset_module = importlib.util.module_from_spec(spec)
+		spec.loader.exec_module(preset_module)
+
+		# List of variables that can be overridden by presets
+		override_vars = [
+			'SIMPLIFY_HTML',
+			'TAGS_TO_STRIP',
+			'ATTRIBUTES_TO_STRIP',
+			'CAN_RENDER_INLINE_IMAGES',
+			'RESIZE_IMAGES',
+			'MAX_IMAGE_WIDTH',
+			'MAX_IMAGE_HEIGHT',
+			'CONVERT_IMAGES',
+			'CONVERT_IMAGES_TO_FILETYPE',
+			'DITHERING_ALGORITHM',
+			'WEB_SIMULATOR_PROMPT_ADDENDUM',
+			'CONVERT_CHARACTERS',
+			'CONVERSION_TABLE'
+		]
+
+		changes_made = False
+		# Override config variables with preset values
+		for var in override_vars:
+			if hasattr(preset_module, var):
+				preset_value = getattr(preset_module, var)
+				if not hasattr(config, var) or getattr(config, var) != preset_value:
+					changes_made = True
+					old_value = getattr(config, var) if hasattr(config, var) else None
+					setattr(config, var, preset_value)
+					
+					# Format the values for printing
+					def format_value(val):
+						if isinstance(val, (list, dict)):
+							return str(val)
+						elif isinstance(val, str):
+							return f"'{val}'"
+						else:
+							return str(val)
+					if old_value is None:
+						val = str(format_value(preset_value)).replace('\r\n', ' ').replace('\n', ' ').replace('\r', ' ')
+						truncated = val[:100] + ('...' if len(val) > 100 else '')
+						print(f"Preset '{preset_name}' set {var} to {truncated}")
+					else:
+						old_val = str(format_value(old_value)).replace('\r\n', ' ').replace('\n', ' ').replace('\r', ' ')
+						new_val = str(format_value(preset_value)).replace('\r\n', ' ').replace('\n', ' ').replace('\r', ' ')
+						old_truncated = old_val[:100] + ('...' if len(old_val) > 100 else '')
+						new_truncated = new_val[:100] + ('...' if len(new_val) > 100 else '')
+						print(f"Preset '{preset_name}' changed {var} from {old_truncated} to {new_truncated}")
+		if changes_made:
+			print(f"Successfully loaded preset: {preset_name}")
+		else:
+			print(f"Loaded preset '{preset_name}' (no changes were necessary)")
+
+	except Exception as e:
+		print(f"Error loading preset '{preset_name}': {str(e)}")
+		quit()
+
 os.environ['FLASK_ENV'] = 'development'
 app = Flask(__name__)
 session = requests.Session()
@@ -33,13 +115,18 @@ def clear_image_cache():
 
 clear_image_cache()
 
-# Try to import config.py and enable extensions
+# Try to import config.py first
 try:
 	import config
-	ENABLED_EXTENSIONS = config.ENABLED_EXTENSIONS
 except ModuleNotFoundError:
 	print("config.py not found, exiting.")
 	quit()
+
+# Load preset immediately after config import
+load_preset()
+
+# Now get the settings we need after preset has potentially modified them
+ENABLED_EXTENSIONS = config.ENABLED_EXTENSIONS
 
 # Load extensions
 extensions = {}
@@ -56,7 +143,16 @@ def serve_cached_image(filename):
 	return send_from_directory(CACHE_DIR, filename, mimetype='image/gif')
 
 def handle_image_request(url):
-	cached_url = fetch_and_cache_image(url)
+	# Pass config values to fetch_and_cache_image
+	cached_url = fetch_and_cache_image(
+		url,
+		resize=config.RESIZE_IMAGES,
+		max_width=config.MAX_IMAGE_WIDTH,
+		max_height=config.MAX_IMAGE_HEIGHT,
+		convert=config.CONVERT_IMAGES,
+		convert_to=config.CONVERT_IMAGES_TO_FILETYPE,
+		dithering=config.DITHERING_ALGORITHM
+	)
 	if cached_url:
 		return send_from_directory(CACHE_DIR, os.path.basename(cached_url), mimetype='image/gif')
 	else:
@@ -125,7 +221,6 @@ def handle_matching_extension(matching_extension):
 		override_extension = matching_extension.__name__
 		print(f"Override enabled for {override_extension}")
 	
-	# Return the response directly
 	return response
 
 def process_response(response, url):
@@ -152,8 +247,17 @@ def process_response(response, url):
 	print(f"Content-Type: {content_type}")
 
 	if content_type.startswith('image/'):
-		# For image content, use the fetch_and_cache_image function
-		cached_url = fetch_and_cache_image(url, content)
+		# For image content, use the fetch_and_cache_image function with config values
+		cached_url = fetch_and_cache_image(
+			url,
+			content,
+			resize=config.RESIZE_IMAGES,
+			max_width=config.MAX_IMAGE_WIDTH,
+			max_height=config.MAX_IMAGE_HEIGHT,
+			convert=config.CONVERT_IMAGES,
+			convert_to=config.CONVERT_IMAGES_TO_FILETYPE,
+			dithering=config.DITHERING_ALGORITHM
+		)
 		if cached_url:
 			return send_from_directory(CACHE_DIR, os.path.basename(cached_url), mimetype='image/gif')
 		else:
@@ -193,8 +297,16 @@ def process_response(response, url):
 		print("Transcoding content")
 		if isinstance(content, bytes):
 			content = content.decode('utf-8', errors='replace')
-		
-		content = transcode_html(content, url)
+		content = transcode_html(
+			content,
+			url,
+			whitelisted_domains=config.WHITELISTED_DOMAINS,
+			simplify_html=config.SIMPLIFY_HTML,
+			tags_to_strip=config.TAGS_TO_STRIP,
+			attributes_to_strip=config.ATTRIBUTES_TO_STRIP,
+			convert_characters=config.CONVERT_CHARACTERS,
+			conversion_table=config.CONVERSION_TABLE
+		)
 	else:
 		print(f"Content type {content_type} should not be transcoded, passing through unchanged")
 
@@ -206,7 +318,6 @@ def process_response(response, url):
 	print("Finished processing response")
 	return response
 
-# handle requests not handled by extensions
 def handle_default_request():
 	url = request.url.replace("https://", "http://", 1)
 	headers = prepare_headers()

@@ -3,7 +3,6 @@ from bs4 import BeautifulSoup
 from bs4.formatter import HTMLFormatter
 import re
 import html
-from config import WHITELISTED_DOMAINS, SIMPLIFY_HTML, TAGS_TO_STRIP, ATTRIBUTES_TO_STRIP, CONVERT_CHARACTERS, CONVERSION_TABLE
 
 class URLAwareHTMLFormatter(HTMLFormatter):
 	def __init__(self, *args, **kwargs):
@@ -50,17 +49,27 @@ def transcode_content(content):
 	
 	return content.encode('utf-8')
 
-
-def transcode_html(html, url=None):
+def transcode_html(html, url=None, whitelisted_domains=None, simplify_html=True, 
+				  tags_to_strip=None, attributes_to_strip=None, 
+				  convert_characters=True, conversion_table=None):
 	"""
 	Uses BeautifulSoup to transcode payloads of the text/html content type
 	"""
+	if whitelisted_domains is None:
+		whitelisted_domains = []
+	if tags_to_strip is None:
+		tags_to_strip = ["script", "link", "style", "source"]
+	if attributes_to_strip is None:
+		attributes_to_strip = ["style", "onclick", "class"]
+	if conversion_table is None:
+		conversion_table = {}
+
 	if isinstance(html, bytes):
 		html = html.decode("utf-8", errors="replace")
 
 	# Handle character conversion regardless of whitelist status
-	if CONVERT_CHARACTERS:
-		for key, replacement in CONVERSION_TABLE.items():
+	if convert_characters:
+		for key, replacement in conversion_table.items():
 			if isinstance(replacement, bytes):
 				replacement = replacement.decode("utf-8")
 			html = html.replace(key, replacement)
@@ -88,14 +97,14 @@ def transcode_html(html, url=None):
 	if url:
 		from urllib.parse import urlparse
 		domain = urlparse(url).netloc
-		is_whitelisted = any(domain.endswith(whitelisted) for whitelisted in WHITELISTED_DOMAINS)
+		is_whitelisted = any(domain.endswith(whitelisted) for whitelisted in whitelisted_domains)
 
 	# Only perform tag/attribute stripping if the domain is not whitelisted and SIMPLIFY_HTML is True
-	if SIMPLIFY_HTML and not is_whitelisted:
-		for tag in soup(TAGS_TO_STRIP):
+	if simplify_html and not is_whitelisted:
+		for tag in soup(tags_to_strip):
 			tag.decompose()
 		for tag in soup():
-			for attr in ATTRIBUTES_TO_STRIP:
+			for attr in attributes_to_strip:
 				if attr in tag.attrs:
 					del tag[attr]
 
