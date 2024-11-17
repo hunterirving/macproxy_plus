@@ -112,12 +112,12 @@ def chat_interface(request):
             
             # Add messages to history
             messages.append({"role": "user", "content": user_input})
-            messages.append({"role": "assistant", "content": response.text})
+            messages.append({"role": "model", "content": response.text})
 
         except Exception as e:
             error_message = f"An error occurred: {str(e)}"
             messages.append({"role": "user", "content": user_input})
-            messages.append({"role": "assistant", "content": error_message})
+            messages.append({"role": "model", "content": error_message})
 
     # Display last 10 messages
     for msg in reversed(messages[-10:]):
