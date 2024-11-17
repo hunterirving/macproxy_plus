@@ -36,7 +36,7 @@ HTML_TEMPLATE = """
             <option value="gemini-1.5-pro-latest" {{ 'selected' if selected_model == 'gemini-1.5-pro-latest' else '' }}>Gemini 1.5 Pro Latest</option>
             <option value="gemini-1.5-pro-exp-0801" {{ 'selected' if selected_model == 'gemini-1.5-pro-exp-0801' else '' }}>Gemini 1.5 Pro Experimental 0801</option>
             <option value="gemini-1.5-pro-exp-0827" {{ 'selected' if selected_model == 'gemini-1.5-pro-exp-0827' else '' }}>Gemini 1.5 Pro Experimental 0827</option>
-            <option value="gemini-exp-1114" {{ 'selected' if selected_model == 'gemini-exp-114' else '' }}>Gemini Experimental 1114</option>
+            <option value="gemini-exp-1114" {{ 'selected' if selected_model == 'gemini-exp-1114' else '' }}>Gemini Experimental 1114</option>
             <option value="gemini-1.5-flash-latest" {{ 'selected' if selected_model == 'gemini-1.5-flash-latest' else '' }}>Gemini 1.5 Flash Latest</option>
             <option value="gemini-1.5-flash-exp-0801" {{ 'selected' if selected_model == 'gemini-1.5-flash-exp-0801' else '' }}>Gemini 1.5 Flash Experimental 0801</option>
             <option value="gemini-1.5-flash-exp-0827" {{ 'selected' if selected_model == 'gemini-1.5-flash-exp-0827' else '' }}>Gemini 1.5 Flash Experimental 0827</option>
