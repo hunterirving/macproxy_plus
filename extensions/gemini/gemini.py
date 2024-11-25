@@ -1,6 +1,6 @@
 from flask import request, render_template_string
 import google.generativeai as genai
-import extensions.config as config
+import config
 
 # Initialize the Google API Client with your API key
 genai.configure(api_key=config.google_api_key)
