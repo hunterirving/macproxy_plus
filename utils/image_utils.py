@@ -1,13 +1,31 @@
-
-import os
-import io
+# Standard library imports
 import hashlib
-import requests
-from PIL import Image
+import io
 import mimetypes
+import os
+import tempfile
+
+# Third-party imports
+import requests
+from PIL import Image, UnidentifiedImageError
+from PILSVG import SVG
+
 
 CACHE_DIR = os.path.join(os.path.dirname(__file__), "cached_images")
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36"
+
+def get_svg_renderer():
+	# If inkscape is installed and in the path, use that, because it supports
+	# more SVG functionality. Otherwise, fall back to using skia.
+	renderer='skia'
+	if 'PATH' in os.environ:
+		paths = os.environ['PATH'].split(':')
+		for path in paths:
+			exp_path = os.path.expandvars(os.path.join(path, 'inkscape'))
+			if os.path.exists(exp_path):
+				renderer='inkscape'
+				break
+	return renderer
 
 def is_image_url(url):
 	mime_type, _ = mimetypes.guess_type(url)
@@ -16,8 +34,24 @@ def is_image_url(url):
 def optimize_image(image_data, resize=True, max_width=512, max_height=342, 
 				  convert=True, convert_to='gif', dithering='FLOYDSTEINBERG'):
 	try:
-		img = Image.open(io.BytesIO(image_data))
-		
+
+		# Try to open the image directly using PIL
+		# If this fails, assume we have an SVG, and try to open it using PILSVG.
+		try:
+			img = Image.open(io.BytesIO(image_data))
+		except UnidentifiedImageError:
+			# PILSVG doesn't support loading an image directly from a
+			# byte stream, only from a file on disk. So create a temp file,
+			# save the image data there, and then pass the path to PILSVG.
+			with tempfile.NamedTemporaryFile(delete=False) as fp:
+				try:
+					fp.write(image_data)
+					fp.close()
+					img = SVG(fp.name).im(renderer=get_svg_renderer())
+				finally:
+					fp.close()
+					os.unlink(fp.name)
+
 		# Convert RGBA images to RGB with white background
 		if img.mode == 'RGBA':
 			background = Image.new('RGB', img.size, (255, 255, 255))
@@ -55,13 +89,17 @@ def optimize_image(image_data, resize=True, max_width=512, max_height=342,
 		return image_data
 
 def fetch_and_cache_image(url, content=None, resize=True, max_width=512, max_height=342,
-						 convert=True, convert_to='gif', dithering='FLOYDSTEINBERG'):
+						 convert=True, convert_to='gif', dithering='FLOYDSTEINBERG',
+						 hash_url=True):
 	try:
 		print(f"Processing image: {url}")
 		
 		# Generate filename with appropriate extension
 		extension = convert_to.lower() if convert and convert_to else "gif"
-		file_name = hashlib.md5(url.encode()).hexdigest() + f".{extension}"
+		if hash_url:
+			file_name = hashlib.md5(url.encode()).hexdigest() + f".{extension}"
+		else:
+			file_name = url + f".{extension}"
 		file_path = os.path.join(CACHE_DIR, file_name)
 		
 		if not os.path.exists(file_path):
