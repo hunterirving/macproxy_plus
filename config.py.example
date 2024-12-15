@@ -52,6 +52,11 @@ WHITELISTED_DOMAINS = [
 # without otherwise modifying the page's source code).
 SIMPLIFY_HTML = True
 
+# If SIMPLIFY_HTML is True, unwrap these HTML tags during processing:
+TAGS_TO_UNWRAP = [
+	"noscript",
+]
+
 # If SIMPLIFY_HTML is True, strip these HTML tags during processing:
 TAGS_TO_STRIP = [
 	"script",

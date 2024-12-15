@@ -1,5 +1,9 @@
 SIMPLIFY_HTML = True
 
+TAGS_TO_UNWRAP = [
+	"noscript",
+]
+
 TAGS_TO_STRIP = [
 	"script",
 	"link",
