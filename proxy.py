@@ -1,99 +1,20 @@
-import os
-import requests
+# Standard library imports
 import argparse
-from flask import Flask, request, session, g, abort, Response, send_from_directory
-from utils.html_utils import transcode_html, transcode_content
-from urllib.parse import urlparse, urljoin
-from bs4 import BeautifulSoup
-import io
-from PIL import Image
-import hashlib
+import os
 import shutil
-import mimetypes
+import socket
+from urllib.parse import urlparse
+
+# Third-party imports
+import requests
+from flask import Flask, request, session, g, abort, Response, send_from_directory
+from werkzeug.serving import get_interface_ip
+
+# First-party imports
+from utils.html_utils import transcode_html, transcode_content
 from utils.image_utils import is_image_url, fetch_and_cache_image, CACHE_DIR
+from utils.system_utils import load_preset
 
-def load_preset():
-	"""
-	Load preset configuration and override default settings if a preset is specified
-	"""
-	if not hasattr(config, 'PRESET') or not config.PRESET:
-		return
-
-	preset_name = config.PRESET
-	preset_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'presets', preset_name)
-	preset_file = os.path.join(preset_dir, f"{preset_name}.py")
-
-	if not os.path.exists(preset_dir):
-		print(f"Error: Preset directory not found: {preset_dir}")
-		print(f"Make sure the preset '{preset_name}' exists in the presets directory")
-		quit()
-
-	if not os.path.exists(preset_file):
-		print(f"Error: Preset file not found: {preset_file}")
-		print(f"Make sure {preset_name}.py exists in the {preset_name} directory")
-		quit()
-
-	try:
-		# Import the preset module
-		import importlib.util
-		spec = importlib.util.spec_from_file_location(preset_name, preset_file)
-		preset_module = importlib.util.module_from_spec(spec)
-		spec.loader.exec_module(preset_module)
-
-		# List of variables that can be overridden by presets
-		override_vars = [
-			'SIMPLIFY_HTML',
-			'TAGS_TO_STRIP',
-			'TAGS_TO_UNWRAP',
-			'ATTRIBUTES_TO_STRIP',
-			'CAN_RENDER_INLINE_IMAGES',
-			'RESIZE_IMAGES',
-			'MAX_IMAGE_WIDTH',
-			'MAX_IMAGE_HEIGHT',
-			'CONVERT_IMAGES',
-			'CONVERT_IMAGES_TO_FILETYPE',
-			'DITHERING_ALGORITHM',
-			'WEB_SIMULATOR_PROMPT_ADDENDUM',
-			'CONVERT_CHARACTERS',
-			'CONVERSION_TABLE'
-		]
-
-		changes_made = False
-		# Override config variables with preset values
-		for var in override_vars:
-			if hasattr(preset_module, var):
-				preset_value = getattr(preset_module, var)
-				if not hasattr(config, var) or getattr(config, var) != preset_value:
-					changes_made = True
-					old_value = getattr(config, var) if hasattr(config, var) else None
-					setattr(config, var, preset_value)
-					
-					# Format the values for printing
-					def format_value(val):
-						if isinstance(val, (list, dict)):
-							return str(val)
-						elif isinstance(val, str):
-							return f"'{val}'"
-						else:
-							return str(val)
-					if old_value is None:
-						val = str(format_value(preset_value)).replace('\r\n', ' ').replace('\n', ' ').replace('\r', ' ')
-						truncated = val[:100] + ('...' if len(val) > 100 else '')
-						print(f"Preset '{preset_name}' set {var} to {truncated}")
-					else:
-						old_val = str(format_value(old_value)).replace('\r\n', ' ').replace('\n', ' ').replace('\r', ' ')
-						new_val = str(format_value(preset_value)).replace('\r\n', ' ').replace('\n', ' ').replace('\r', ' ')
-						old_truncated = old_val[:100] + ('...' if len(old_val) > 100 else '')
-						new_truncated = new_val[:100] + ('...' if len(new_val) > 100 else '')
-						print(f"Preset '{preset_name}' changed {var} from {old_truncated} to {new_truncated}")
-		if changes_made:
-			print(f"Successfully loaded preset: {preset_name}")
-		else:
-			print(f"Loaded preset '{preset_name}' (no changes were necessary)")
-
-	except Exception as e:
-		print(f"Error loading preset '{preset_name}': {str(e)}")
-		quit()
 
 os.environ['FLASK_ENV'] = 'development'
 app = Flask(__name__)
@@ -116,15 +37,8 @@ def clear_image_cache():
 
 clear_image_cache()
 
-# Try to import config.py first
-try:
-	import config
-except ModuleNotFoundError:
-	print("config.py not found, exiting.")
-	quit()
-
 # Load preset immediately after config import
-load_preset()
+config = load_preset()
 
 # Now get the settings we need after preset has potentially modified them
 ENABLED_EXTENSIONS = config.ENABLED_EXTENSIONS
@@ -360,8 +274,27 @@ def apply_caching(resp):
 		pass
 	return resp
 
+def get_proxy_hostname(hostname):
+	# Based on the `log_startup` function from werkzeug.serving.
+	# Translates a "bind all addresses" string into a real IP
+	# (or returns the hostname if one was set)
+	if hostname == "0.0.0.0":
+		display_hostname = get_interface_ip(socket.AF_INET)
+	elif hostname == "::":
+		display_hostname = get_interface_ip(socket.AF_INET6)
+	else:
+		display_hostname = hostname
+	return display_hostname
+
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description="Macproxy command line arguments")
+	parser.add_argument(
+		"--host",
+		type=str,
+		default="0.0.0.0",
+		action="store",
+		help="Host IP the web server will run on",
+	)
 	parser.add_argument(
 		"--port",
 		type=int,
@@ -370,4 +303,11 @@ if __name__ == "__main__":
 		help="Port number the web server will run on",
 	)
 	arguments = parser.parse_args()
-	app.run(host="0.0.0.0", port=arguments.port, debug=False)
+
+	# Translate the bind address (typically 0.0.0.0 or ::) to a friendly
+	# hostname / IP, and store it and the port in the application config
+	# object. This will be used if we need to generate URLs to the proxy itself
+	# in the HTML (as opposed to the site we are proxying the request to).
+	app.config['MACPROXY_HOST_AND_PORT'] = f"{get_proxy_hostname(arguments.host)}:{arguments.port}"
+
+	app.run(host=arguments.host, port=arguments.port, debug=False)

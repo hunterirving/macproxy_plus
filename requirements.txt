@@ -3,6 +3,8 @@ Jinja2==3.0.3
 MarkupSafe==2.0.1
 Werkzeug==2.0.3
 beautifulsoup4==4.10.0
+html5lib==1.1
 itsdangerous==2.0.1
+Pillow==11.0.0
+pillow-svg @ git+https://github.com/smallsco/pillow-svg.git@6b58c2a2d8502d07770ce81cea56ed68e266a6f1
 requests==2.26.0
-Pillow
