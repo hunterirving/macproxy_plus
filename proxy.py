@@ -369,20 +369,5 @@ if __name__ == "__main__":
 		action="store",
 		help="Port number the web server will run on",
 	)
-	parser.add_argument(
-		"--user-agent",
-		type=str,
-		default=USER_AGENT,
-		action="store",
-		help="Spoof as a particular web browser, e.g. \"Mozilla/5.0\"",
-	)
-	parser.add_argument(
-		"--html-formatter",
-		type=str,
-		choices=["minimal", "html", "html5"],
-		default="html5",
-		action="store",
-		help="The BeautifulSoup html formatter that Macproxy will use",
-	)
 	arguments = parser.parse_args()
 	app.run(host="0.0.0.0", port=arguments.port, debug=False)
