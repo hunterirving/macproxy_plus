@@ -44,6 +44,7 @@ def load_preset():
 		override_vars = [
 			'SIMPLIFY_HTML',
 			'TAGS_TO_STRIP',
+			'TAGS_TO_UNWRAP',
 			'ATTRIBUTES_TO_STRIP',
 			'CAN_RENDER_INLINE_IMAGES',
 			'RESIZE_IMAGES',
@@ -302,6 +303,7 @@ def process_response(response, url):
 			url,
 			whitelisted_domains=config.WHITELISTED_DOMAINS,
 			simplify_html=config.SIMPLIFY_HTML,
+			tags_to_unwrap=config.TAGS_TO_UNWRAP,
 			tags_to_strip=config.TAGS_TO_STRIP,
 			attributes_to_strip=config.ATTRIBUTES_TO_STRIP,
 			convert_characters=config.CONVERT_CHARACTERS,

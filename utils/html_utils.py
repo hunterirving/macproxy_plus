@@ -50,7 +50,7 @@ def transcode_content(content):
 	return content.encode('utf-8')
 
 def transcode_html(html, url=None, whitelisted_domains=None, simplify_html=False, 
-				  tags_to_strip=None, attributes_to_strip=None, 
+				  tags_to_unwrap=None, tags_to_strip=None, attributes_to_strip=None,
 				  convert_characters=False, conversion_table=None):
 	"""
 	Uses BeautifulSoup to transcode payloads of the text/html content type
@@ -93,6 +93,8 @@ def transcode_html(html, url=None, whitelisted_domains=None, simplify_html=False
 
 	# Only perform tag/attribute stripping if the domain is not whitelisted and SIMPLIFY_HTML is True
 	if simplify_html and not is_whitelisted:
+		for tag in soup(tags_to_unwrap):
+			tag.unwrap()
 		for tag in soup(tags_to_strip):
 			tag.decompose()
 		for tag in soup():

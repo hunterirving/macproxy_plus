@@ -6,6 +6,9 @@ __pycache__/
 venv/
 current
 
+# PyCharm metadata
+.idea/
+
 # Ignore all instances of config.py
 **/config.py
 
