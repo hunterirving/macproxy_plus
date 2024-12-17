@@ -19,7 +19,7 @@ ENABLED_EXTENSIONS = [
 	#"hunterirving",
 	#"kagi",
 	#"mistral",
-	#"notyoutube"
+	#"notyoutube",
 	#"npr",
 	#"reddit",
 	#"waybackmachine",
