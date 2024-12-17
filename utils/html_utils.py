@@ -67,7 +67,11 @@ def transcode_html(html, url=None, whitelisted_domains=None, simplify_html=False
 			html = html.replace(key, replacement)
 
 	soup = BeautifulSoup(html, "html.parser")
-	
+
+	# Contents of <pre> tags should always use HTML entities
+	for tag in soup.find_all(['pre']):
+		tag.replace_with(str(tag))
+
 	# Always convert HTTPS to HTTP regardless of whitelist status
 	for tag in soup(['link', 'script', 'img', 'a', 'iframe']):
 		# Handle src attributes
