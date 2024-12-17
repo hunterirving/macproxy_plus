@@ -16,7 +16,7 @@ def load_preset():
 		return config
 
 	preset_name = config.PRESET
-	preset_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'presets', preset_name)
+	preset_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../presets', preset_name)
 	preset_file = os.path.join(preset_dir, f"{preset_name}.py")
 
 	if not os.path.exists(preset_dir):
