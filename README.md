@@ -1,7 +1,7 @@
 ## MacProxy Plus
-A extensible HTTP proxy that connects early computers to the Internet.
+An extensible HTTP proxy that connects early computers to the Internet.
 
-This fork of <a href="https://github.com/rdmark/macproxy">MacProxy</a> adds support for ```extensions```, which intercept requests for specific domains to serve simplified HTML interfaces, making it possible to browse the modern web from vintage hardware. Though originally designed for compatibility with the MacWeb browser, it has since been tested with various vintage web browsers.
+This fork of <a href="https://github.com/rdmark/macproxy">MacProxy</a> adds support for ```extensions```, which intercept requests for specific domains to serve simplified HTML interfaces, making it possible to browse the modern web from vintage hardware. Though originally designed for compatibility with early Macintoshes, MacProxy Plus should work to get many other vintage machines online.
 
 ### Demonstration Video (on YouTube)
 
