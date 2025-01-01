@@ -1,6 +1,7 @@
 ## MacProxy Plus
+A extensible HTTP proxy that connects early computers to the Internet.
 
-This fork of <a href="https://github.com/rdmark/macproxy">MacProxy</a> adds support for 'extensions', which intercept requests for specific domains and serve simple HTML interfaces, making it possible to browse the modern web from vintage hardware.
+This fork of <a href="https://github.com/rdmark/macproxy">MacProxy</a> adds support for ```extensions```, which intercept requests for specific domains to serve simplified HTML interfaces, making it possible to browse the modern web from vintage hardware. Though originally designed for compatibility with the MacWeb browser, it has since been tested with various vintage web browsers.
 
 ### Demonstration Video (on YouTube)
 
@@ -29,13 +30,27 @@ To enable extensions:
 		]
 	```
 
-### Running MacProxy Plus
+### Starting MacProxy Plus
 
-Run the ```start_macproxy.sh``` script. If an enabled extension relies on any external packages, ```start_macproxy.sh``` will automatically install them from the extension's included ```requirements.txt``` file.
+On Unix-like systems (such as Linux or macOS), run the ```start_macproxy.sh``` script. It will create a Python virtual environment, install the required Python packages, and make the proxy server available on your local network.
 
 ```shell
 ./start_macproxy.sh
 ```
+
+On Windows, run the analogous PowerShell script, ```start_macproxy.ps1```:
+
+```powershell
+.\start_macproxy.ps1
+```
+
+### Connecting to MacProxy Plus from your Vintage Machine
+To use MacProxy Plus, you'll need to configure your vintage browser or operating system to connect to the proxy server running on your host machine. The specific steps will vary depending on your browser and OS, but if your system lets you set a proxy server, it should work.
+
+If you're using a BlueSCSI to get a vintage Mac online, <a href="https://bluescsi.com/docs/WiFi-DaynaPORT">this guide</a> should help with the initial Internet setup.
+<br><br>
+![Configuring proxy settings in MacWeb 2.0c+](readme_images/proxy_settings.gif)
+*Example: Configuring proxy settings in <a href="https://github.com/hunterirving/macweb-2.0c-plus">MacWeb 2.0c+</a>*
 
 ### Example Extension: ChatGPT
 
@@ -52,7 +67,7 @@ ENABLED_EXTENSIONS = [
 ```
 
 Once enabled, Macproxy will reroute requests to ```http://chatgpt.com``` to this inteface.
-
+<br><br>
 <img src="readme_images/macintosh_plus.jpg">
 
 ### Other Extensions
@@ -79,7 +94,7 @@ Type a URL that doesn't exist into the address bar, and Anthropic's Claude 3.5 S
 A legally distinct parody of YouTube, which uses the fantastic homebrew application <a href="https://www.macflim.com/macflim2/">MacFlim</a> (created by Fred Stark) to encode video files as a series of dithered black and white frames.
 
 #### Hackaday
-Serves a pared-down, text-only version of hackaday.com, complete with articles, comments, and search functionality.
+A pared-down, text-only version of hackaday.com, complete with articles, comments, and search functionality.
 
 #### npr.org
 Serves articles from the text-only version of the site (```text.npr.org```) and transforms relative urls into absolute urls for compatibility with MacWeb 2.0.
@@ -87,90 +102,9 @@ Serves articles from the text-only version of the site (```text.npr.org```) and 
 #### wiby.me
 Browse Wiby's collection of personal, handmade webpages (fixes an issue where clicking "surprise me..." would not redirect users to their final destination).
 
-<hr>
+### Future Work
+- more extensions for more sites
+- presets targeting specific vintage machines/browsers
+- wiki with how-to guides for different machines
 
-#### (pre-fork version of the readme follows below)
-
-<hr>
-
-## Macproxy 
-
-A simple HTTP proxy script for putting early computers on the Web. Despite its name, there is nothing Mac specific about this proxy. It was originally designed with compatibility with the MacWeb web browser in mind, but has been tested on a variety of vintage web browsers since.
-
-The proxy.py script runs a Flask server that takes all requests and proxies them, using html_utils.py to strip tags that are incompatible with, or pulls in contents that aren't parsable by old browsers such as Netscape 4 or MacWeb.
-
-The proxy server listens to port 5001 by default, but the port number can be changed using a command line parameter.
-
-## Requirements
-Python3 for running the script, venv if you want to use the virtual environment, or pip if you want to install libraries manually.
-
-```
-sudo apt install python3 python3-venv python3-pip
-```
-
-## Usage
-The start_macproxy.sh shell script will create and manage a venv Python environment, and if successful launch the proxy script.
-
-```
-./start_macproxy.sh
-```
-
-Launch with a specific port number (defaults to port 5000):
-
-```
-./start_macproxy.sh --port=5001
-```
-
-You may also start the Python script by itself, using system Python.
-
-```
-pip3 install -r requirements.txt
-python3 proxy.py
-```
-
-Launch with a specific port number:
-
-```
-python3 proxy.py --port 5001
-```
-
-## Advanced Options
-Use the advanced options to change how Macproxy presents itself to the web, and how it processes the data it gets back.
-
-By default, Macproxy will forward the actual User-Agent string of the originating browser in its request headers. This option overrides this with an arbitrary string, allowing you to spoof as any browser. For instance, Opera Mini 8.0 for J2ME:
-
-```
-python3 proxy.py --user-agent "Opera/9.80 (J2ME/MIDP; Opera Mini/8.0.35158/36.2534; U; en) Presto/2.12.423 Version/12.16"
-```
-
-Selects the BeatifulSoup html formatter that Macproxy will use, e.g. the minimal formatter:
-```
-python3 proxy.py --html-formatter minimal
-```
-
-Turns off the conversion of select typographic symbols to ASCII characters:
-```
-python3 proxy.py --disable-char-conversion
-```
-
-Refer to Macproxy's helptext for more details:
-```
-python3 proxy.py -h
-```
-
-## systemd service
-This repo comes with a systemd service configuration template. At the time of writing, systemd is the de-facto standard solution for managing daemons on contemporary Linux distributions.
-Edit the macproxy.service file and point the ExecStart= parameter to the location of the start_macproxy.sh file, e.g. on a Raspberry Pi:
-
-```
-ExecStart=/home/pi/macproxy/start_macproxy.sh
-```
-
-Then copy the service file to /etc/systemd/system and enable the service:
-
-```
-sudo cp macproxy.service /etc/systemd/system/
-sudo systemctl enable macproxy
-sudo systemctl daemon-reload
-sudo systemctl start macproxy
-```
+Happy Surfing 😎
