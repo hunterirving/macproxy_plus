@@ -50,6 +50,7 @@ To use MacProxy Plus, you'll need to configure your vintage browser or operating
 If you're using a BlueSCSI to get a vintage Mac online, <a href="https://bluescsi.com/docs/WiFi-DaynaPORT">this guide</a> should help with the initial Internet setup.
 <br><br>
 ![Configuring proxy settings in MacWeb 2.0c+](readme_images/proxy_settings.gif)
+
 *Example: Configuring proxy settings in <a href="https://github.com/hunterirving/macweb-2.0c-plus">MacWeb 2.0c+</a>*
 
 ### Example Extension: ChatGPT
