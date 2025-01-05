@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 import requests
 from flask import Flask, request, session, g, abort, Response, send_from_directory
 from werkzeug.serving import get_interface_ip
+from werkzeug.wrappers.response import Response as WerkzeugResponse
 
 # First-party imports
 from utils.html_utils import transcode_html, transcode_content
@@ -151,7 +152,7 @@ def process_response(response, url):
 			content = response[0]
 			status_code = 200
 			headers = {}
-	elif isinstance(response, Response):
+	elif isinstance(response, (Response, WerkzeugResponse)):
 		return response
 	else:
 		content = response
