@@ -36,8 +36,8 @@ HTML_TEMPLATE = """
 		<input type="submit" value="Submit">
 		<select id="model" name="model">
 			<option value="claude-3-5-sonnet-latest" {{ 'selected' if selected_model == 'claude-3-5-sonnet-latest' else '' }}>Claude 3.5 Sonnet</option>
+			<option value="claude-3-5-haiku-20241022" {{ 'selected' if selected_model == 'claude-3-5-haiku-20241022' else '' }}>Claude 3.5 Haiku</option>
 			<option value="claude-3-opus-20240229" {{ 'selected' if selected_model == 'claude-3-opus-20240229' else '' }}>Claude 3 Opus</option>
-			<option value="claude-3-sonnet-20240229" {{ 'selected' if selected_model == 'claude-3-sonnet-20240229' else '' }}>Claude 3 Sonnet</option>
 			<option value="claude-3-haiku-20240307" {{ 'selected' if selected_model == 'claude-3-haiku-20240307' else '' }}>Claude 3 Haiku</option>
 		</select>
 	</form>
