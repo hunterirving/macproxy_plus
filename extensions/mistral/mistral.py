@@ -33,10 +33,11 @@ HTML_TEMPLATE = """
 <body>
 	<form method="post" action="/">
 		<select id="model" name="model">
-			<option value="mistral-large-latest" {{ 'selected' if selected_model == 'mistral-large-latest' else '' }}>Mistral Large 2407 123b</option>
-			<option value="mistral-small-latest" {{ 'selected' if selected_model == 'mistral-small-latest' else '' }}>Mistral Small 2409 22b</option>
-			<option value="open-mistral-nemo" {{ 'selected' if selected_model == 'open-mistral-nemo' else '' }}>Mistral Nemo 2407 12b</option>
-			<option value="ministral-8b-latest" {{ 'selected' if selected_model == 'ministral-8b-latest' else '' }}>Ministral 2410 8b</option>
+			<option value="mistral-large-latest" {{ 'selected' if selected_model == 'mistral-large-latest' else '' }}>Mistral Large Latest</option>
+			<option value="mistral-small-latest" {{ 'selected' if selected_model == 'mistral-small-latest' else '' }}>Mistral Small Latest</option>
+			<option value="open-mistral-nemo" {{ 'selected' if selected_model == 'open-mistral-nemo' else '' }}>Mistral Nemo 2407</option>
+			<option value="ministral-8b-latest" {{ 'selected' if selected_model == 'ministral-8b-latest' else '' }}>Ministral 8b</option>
+			<option value="ministral-3b-latest" {{ 'selected' if selected_model == 'ministral-3b-latest' else '' }}>Ministral 3b</option>
 		</select>
 		<input type="text" size="64" name="command" required autocomplete="off">
 		<input type="submit" value="Submit">
