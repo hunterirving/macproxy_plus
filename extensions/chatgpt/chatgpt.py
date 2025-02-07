@@ -43,7 +43,9 @@ HTML_TEMPLATE = """
 		<input type="text" size="49" name="command" required autocomplete="off">
 		<input type="submit" value="Submit">
 		<select id="model" name="model">
+		    <option value="chatgpt-4o-latest" {{ 'selected' if selected_model == 'chatgpt-4o-latest' else '' }}>ChatGPT-4o</option>
 			<option value="gpt-4o" {{ 'selected' if selected_model == 'gpt-4o' else '' }}>GPT-4o</option>
+			<option value="gpt-4o-mini" {{ 'selected' if selected_model == 'gpt-4o-mini' else '' }}>GPT-4o Mini</option>
 			<option value="gpt-4-turbo" {{ 'selected' if selected_model == 'gpt-4-turbo' else '' }}>GPT-4</option>
 			<option value="gpt-3.5-turbo" {{ 'selected' if selected_model == 'gpt-3.5-turbo' else '' }}>GPT-3.5</option>
 		</select>
