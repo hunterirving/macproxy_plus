@@ -35,6 +35,7 @@ HTML_TEMPLATE = """
 		<input type="text" size="38" name="command" required autocomplete="off">
 		<input type="submit" value="Submit">
 		<select id="model" name="model">
+                        <option value="claude-3-7-sonnet-20250219" {{ 'selected' if selected_model == 'claude-3-7-sonnet-20250219' else '' }}>Claude 3.7 Sonnet</option>
 			<option value="claude-3-5-sonnet-latest" {{ 'selected' if selected_model == 'claude-3-5-sonnet-latest' else '' }}>Claude 3.5 Sonnet</option>
 			<option value="claude-3-5-haiku-20241022" {{ 'selected' if selected_model == 'claude-3-5-haiku-20241022' else '' }}>Claude 3.5 Haiku</option>
 			<option value="claude-3-opus-20240229" {{ 'selected' if selected_model == 'claude-3-opus-20240229' else '' }}>Claude 3 Opus</option>
