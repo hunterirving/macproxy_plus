@@ -1,9 +1,10 @@
 from flask import request, render_template_string
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 import config
 
 # Initialize the Google API Client with your API key
-genai.configure(api_key=config.GEMINI_AI_API_KEY)
+client = genai.Client(api_key=config.GEMINI_API_KEY)
 
 DOMAIN = "gemini.google.com"
 
@@ -47,13 +48,13 @@ HTML_TEMPLATE = """
 """
 
 def get_generation_config():
-    return {
-        "temperature": 1,
-        "top_p": 0.95,
-        "top_k": 40,
-        "max_output_tokens": 8192,
-        "response_mime_type": "text/plain",
-    }
+    return types.GenerateContentConfig(
+        temperature=1,
+        top_p=0.95,
+        top_k=40,
+        max_output_tokens=8192,
+        system_instruction=system_prompt
+    )
 
 def handle_request(req):
     if req.method == 'POST':
@@ -84,31 +85,26 @@ def chat_interface(request):
             previous_model = selected_model
         
         try:
-            # Initialize model
-            model = genai.GenerativeModel(
-                model_name=selected_model,
-                generation_config=get_generation_config()
-            )
+            # Create content list starting with user input
+            current_message = {"text": user_input}
+            contents = [{"role": "user", "parts": [current_message]}]
             
-            # Format history for API
-            history = []
+            # Add previous messages to maintain context
             if messages:
+                history_contents = []
                 for msg in messages:
-                    history.append({
-                        "role": "user" if msg["role"] == "user" else "model",
-                        "parts": [msg["content"]]
+                    history_contents.append({
+                        "role": msg["role"],
+                        "parts": [{"text": msg["content"]}]
                     })
+                contents = history_contents + contents
             
-            # Initialize chat with system prompt
-            if not messages:
-                chat = model.start_chat(history=[{
-                    "role": "user",
-                    "parts": [system_prompt]
-                }])
-                response = chat.send_message(user_input)
-            else:
-                chat = model.start_chat(history=history)
-                response = chat.send_message(user_input)
+            # Generate response
+            response = client.models.generate_content(
+                model=selected_model,
+                contents=contents,
+                config=get_generation_config()
+            )
             
             # Add messages to history
             messages.append({"role": "user", "content": user_input})
