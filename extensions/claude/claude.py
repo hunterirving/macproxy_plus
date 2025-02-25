@@ -8,20 +8,22 @@ client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
 DOMAIN = "claude.ai"
 
 messages = []
-selected_model = "claude-3-5-sonnet-latest"
+selected_model = "claude-3-7-sonnet-latest"
 previous_model = selected_model
 
 system_prompt = """Please provide your response in plain text using only ASCII characters. 
 Never use any special or esoteric characters that might not be supported by older systems.
 Your responses will be presented to the user within the body of an html document. Be aware that any html tags you respond with will be interpreted and rendered as html. 
 Therefore, when discussing an html tag, do not wrap it in <>, as it will be rendered as html. Instead, wrap the name of the tag in <b> tags to emphasize it, for example "the <b>a</b> tag". 
-You do not need to provide a <body> tag. 
-When responding with a list, ALWAYS format it using <ol> or <ul> with individual list items wrapped in <li> tags. 
+You do not need to provide a <body> tag.
+You do not need to wrap your response in a <p> tag.
+When responding with a list, always format it using <ol> or <ul> with individual list items wrapped in <li> tags. 
 When responding with a link, use the <a> tag.
-When responding with code or other formatted text (including prose or poetry), always insert <pre></pre> tags with <code></code> tags nested inside (which contain the formatted content).
-If the user asks you to respond 'in a code block', this is what they mean. NEVER use three backticks (```like so``` (markdown style)) when discussing code. If you need to highlight a variable name or text of similar (short) length, wrap it in <code> tags (without the aforementioned <pre> tags). Do not forget to close html tags where appropriate. 
+When responding with code, use <pre></pre> tags with <code></code> tags nested inside (which contain the code).
+If the user asks you to respond 'in a code block', this is what they mean. Never use three backticks (```like so``` (markdown style)) when discussing code. If you need to highlight a variable name or text of similar (short) length, wrap it in <code> tags (without the aforementioned <pre> tags).
+Remember to close html tags where appropriate. 
 When using a code block, ensure that individual lines of text do not exceed 60 characters.
-NEVER use **this format** (markdown style) to bold text  - instead, wrap text in <b> tags or <i> tags (when appropriate) to emphasize it."""
+Never use **this format** (markdown style) to bold text  - instead, wrap text in <b> tags or <i> tags (when appropriate) to emphasize it."""
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -32,14 +34,13 @@ HTML_TEMPLATE = """
 </head>
 <body>
 	<form method="post" action="/">
-		<input type="text" size="38" name="command" required autocomplete="off">
+		<input type="text" size="63" name="command" required autocomplete="off">
 		<input type="submit" value="Submit">
 		<select id="model" name="model">
-                        <option value="claude-3-7-sonnet-20250219" {{ 'selected' if selected_model == 'claude-3-7-sonnet-20250219' else '' }}>Claude 3.7 Sonnet</option>
+			<option value="claude-3-7-sonnet-latest" {{ 'selected' if selected_model == 'claude-3-7-sonnet-latest' else '' }}>Claude 3.7 Sonnet</option>
 			<option value="claude-3-5-sonnet-latest" {{ 'selected' if selected_model == 'claude-3-5-sonnet-latest' else '' }}>Claude 3.5 Sonnet</option>
-			<option value="claude-3-5-haiku-20241022" {{ 'selected' if selected_model == 'claude-3-5-haiku-20241022' else '' }}>Claude 3.5 Haiku</option>
-			<option value="claude-3-opus-20240229" {{ 'selected' if selected_model == 'claude-3-opus-20240229' else '' }}>Claude 3 Opus</option>
-			<option value="claude-3-haiku-20240307" {{ 'selected' if selected_model == 'claude-3-haiku-20240307' else '' }}>Claude 3 Haiku</option>
+			<option value="claude-3-5-haiku-latest" {{ 'selected' if selected_model == 'claude-3-5-haiku-latest' else '' }}>Claude 3.5 Haiku</option>
+			<option value="claude-3-opus-latest" {{ 'selected' if selected_model == 'claude-3-opus-latest' else '' }}>Claude 3 Opus</option>
 		</select>
 	</form>
 	<div id="chat">
