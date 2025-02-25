@@ -15,7 +15,7 @@
 ENABLED_EXTENSIONS = [
 	#"chatgpt",
 	#"claude",
-        #"gemini",
+	#"gemini",
 	#"hackaday",
 	#"hacksburg",
 	#"hunterirving",
