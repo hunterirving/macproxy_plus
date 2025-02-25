@@ -39,7 +39,7 @@ HTML_TEMPLATE = """
 			<option value="ministral-8b-latest" {{ 'selected' if selected_model == 'ministral-8b-latest' else '' }}>Ministral 8b</option>
 			<option value="ministral-3b-latest" {{ 'selected' if selected_model == 'ministral-3b-latest' else '' }}>Ministral 3b</option>
 		</select>
-		<input type="text" size="64" name="command" required autocomplete="off">
+		<input type="text" size="63" name="command" required autocomplete="off">
 		<input type="submit" value="Submit">
 	</form>
 	<div id="chat">

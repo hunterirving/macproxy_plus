@@ -37,7 +37,7 @@ HTML_TEMPLATE = """
 			<option value="gemini-1.5-flash-latest" {{ 'selected' if selected_model == 'gemini-1.5-flash-latest' else '' }}>Gemini 1.5 Flash Latest</option>
 			<option value="gemini-1.5-flash-8b" {{ 'selected' if selected_model == 'gemini-1.5-flash-8b' else '' }}>Gemini 1.5 Flash 8b</option>
 		</select>
-		<input type="text" size="64" name="command" required autocomplete="off">
+		<input type="text" size="63" name="command" required autocomplete="off">
 		<input type="submit" value="Submit">
 	</form>
 	<div id="chat">

@@ -40,8 +40,6 @@ HTML_TEMPLATE = """
 </head>
 <body>
 	<form method="post" action="/">
-		<input type="text" size="49" name="command" required autocomplete="off">
-		<input type="submit" value="Submit">
 		<select id="model" name="model">
 		    <option value="chatgpt-4o-latest" {{ 'selected' if selected_model == 'chatgpt-4o-latest' else '' }}>ChatGPT-4o</option>
 			<option value="gpt-4o" {{ 'selected' if selected_model == 'gpt-4o' else '' }}>GPT-4o</option>
@@ -49,6 +47,8 @@ HTML_TEMPLATE = """
 			<option value="gpt-4-turbo" {{ 'selected' if selected_model == 'gpt-4-turbo' else '' }}>GPT-4</option>
 			<option value="gpt-3.5-turbo" {{ 'selected' if selected_model == 'gpt-3.5-turbo' else '' }}>GPT-3.5</option>
 		</select>
+		<input type="text" size="63" name="command" required autocomplete="off">
+		<input type="submit" value="Submit">
 	</form>
 	<div id="chat">
 		<p>{{ output|safe }}</p>

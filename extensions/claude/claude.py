@@ -34,14 +34,14 @@ HTML_TEMPLATE = """
 </head>
 <body>
 	<form method="post" action="/">
-		<input type="text" size="63" name="command" required autocomplete="off">
-		<input type="submit" value="Submit">
 		<select id="model" name="model">
 			<option value="claude-3-7-sonnet-latest" {{ 'selected' if selected_model == 'claude-3-7-sonnet-latest' else '' }}>Claude 3.7 Sonnet</option>
 			<option value="claude-3-5-sonnet-latest" {{ 'selected' if selected_model == 'claude-3-5-sonnet-latest' else '' }}>Claude 3.5 Sonnet</option>
 			<option value="claude-3-5-haiku-latest" {{ 'selected' if selected_model == 'claude-3-5-haiku-latest' else '' }}>Claude 3.5 Haiku</option>
 			<option value="claude-3-opus-latest" {{ 'selected' if selected_model == 'claude-3-opus-latest' else '' }}>Claude 3 Opus</option>
 		</select>
+		<input type="text" size="63" name="command" required autocomplete="off">
+		<input type="submit" value="Submit">
 	</form>
 	<div id="chat">
 		<p>{{ output|safe }}</p>
