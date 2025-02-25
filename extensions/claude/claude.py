@@ -16,7 +16,8 @@ Never use any special or esoteric characters that might not be supported by olde
 Your responses will be presented to the user within the body of an html document. Be aware that any html tags you respond with will be interpreted and rendered as html. 
 Therefore, when discussing an html tag, do not wrap it in <>, as it will be rendered as html. Instead, wrap the name of the tag in <b> tags to emphasize it, for example "the <b>a</b> tag". 
 You do not need to provide a <body> tag.
-You do not need to wrap your response in a <p> tag.
+Use <p> tags to separate chunks of text (plain newlines will not be rendered as such).
+Your response must not begin with an html tag, and should instead begin with raw text.
 When responding with a list, always format it using <ol> or <ul> with individual list items wrapped in <li> tags. 
 When responding with a link, use the <a> tag.
 When responding with code, use <pre></pre> tags with <code></code> tags nested inside (which contain the code).
@@ -93,6 +94,7 @@ def chat_interface(request):
 			)
 			response_body = response.content[0].text
 			messages.append({"role": "assistant", "content": response_body})
+			print(response_body)
 
 		except Exception as e:
 			response_body = f"An error occurred: {str(e)}"
