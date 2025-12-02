@@ -8,6 +8,13 @@ import re
 
 DOMAIN = "wikipedia.org"
 
+# https://foundation.wikimedia.org/wiki/Policy:Wikimedia_Foundation_User-Agent_Policy
+# Wikipedia requires a user agent for all http requests.
+# Following the convention of including the word "bot" since this is an "automated" agent.
+HEADERS = {
+	"user-agent" : "macproxybot/1.0"
+}
+
 def create_search_form():
 	return '''
 	<br>
@@ -22,7 +29,7 @@ def create_search_form():
 
 def get_featured_article_snippet():
 	try:
-		response = requests.get("https://en.wikipedia.org/wiki/Main_Page")
+		response = requests.get("https://en.wikipedia.org/wiki/Main_Page", headers=HEADERS)
 		response.raise_for_status()
 		soup = BeautifulSoup(response.text, 'html.parser')
 		tfa_div = soup.find('div', id='mp-tfa')
@@ -69,7 +76,7 @@ def handle_wiki_page(title):
 	}
 	
 	try:
-		search_response = requests.get(search_url, params=params)
+		search_response = requests.get(search_url, params=params, headers=HEADERS)
 		search_response.raise_for_status()
 		search_data = search_response.json()
 
@@ -79,7 +86,7 @@ def handle_wiki_page(title):
 			
 			# Now fetch the page using the found title
 			url = f"https://{DOMAIN}/wiki/{urllib.parse.quote(found_title)}"
-			response = requests.get(url)
+			response = requests.get(url, headers=HEADERS)
 			response.raise_for_status()
 
 			soup = BeautifulSoup(response.text, 'html.parser')
