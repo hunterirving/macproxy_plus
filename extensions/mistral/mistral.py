@@ -1,5 +1,5 @@
 from flask import request, render_template_string
-from mistralai import Mistral
+from mistralai.client import Mistral
 import config
 
 # Initialize the Mistral Client with your API key
