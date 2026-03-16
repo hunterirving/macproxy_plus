@@ -1,7 +1,7 @@
 # HINT: MacWeb 2.0 doesn't seem to have CSS support. To work around this, in MacWeb 2.0 set <h4> styling to font="Chicago" with Size="As Is".
 # HINT: WebSimulator is not associated with or endorsed by WebSim.
 
-from flask import request, render_template_string
+from flask import request, render_template_string, Response
 import anthropic
 import config
 import importlib.util
@@ -153,8 +153,8 @@ def handle_request(req):
 	return simulate_web_request(req)
 
 def format_cost(cost):
-	formatted = f"{cost:.4f}"
-	return f"{GREEN}{formatted[:formatted.index('.')+3]}{RESET}{formatted[formatted.index('.')+3:]}"
+	formatted = f"{cost:.2f}"
+	return f"{GREEN}{formatted}{RESET}"
 
 def simulate_web_request(req):
 	global message_history
@@ -190,28 +190,92 @@ def simulate_web_request(req):
 	# Combine context messages with the current request
 	all_messages = context_messages + [current_request]
 
-	try:
-		response = client.messages.create(
-			model="claude-3-5-sonnet-20240620",
-			max_tokens=8192,
-			messages=all_messages,
-			system=FULL_SYSTEM_PROMPT
-		)
-		simulated_content = response.content[0].text
+	def generate():
+		"""Stream HTML chunks as they arrive from the API."""
+		full_response = []
 
-		# Estimate request cost
-		total_content_length = sum(len(msg['content']) for msg in all_messages) + len(FULL_SYSTEM_PROMPT)
-		input_cost = total_content_length / 4 * 0.000003
-		output_cost = len(simulated_content)/4 * 0.000015
-		total_spend += input_cost + output_cost
-		print(f"Estimated cost for request: ${format_cost(round(input_cost + output_cost, 4))}")
-		print(f"Estimated total spend this session: ${format_cost(round(total_spend, 4))}")
+		try:
+			should_convert = config.CONVERT_CHARACTERS and config.CONVERSION_TABLE
+			if should_convert:
+				# Pre-decode the conversion table once
+				conv_table = {}
+				max_key_len = 0
+				for key, replacement in config.CONVERSION_TABLE.items():
+					if isinstance(replacement, bytes):
+						replacement = replacement.decode("utf-8")
+					conv_table[key] = replacement
+					if len(key) > max_key_len:
+						max_key_len = len(key)
 
-		# Update message history
-		message_history.append({"request": current_request_content, "response": simulated_content})
-		if len(message_history) > MAX_HISTORY:
-			message_history.pop(0)
+			with client.messages.stream(
+				model="claude-sonnet-4-6",
+				max_tokens=8192,
+				messages=all_messages,
+				system=FULL_SYSTEM_PROMPT
+			) as stream:
+				if should_convert:
+					# Buffer raw text and only convert/yield when we
+					# have enough to guarantee no conversion key spans
+					# the buffer/remainder boundary.
+					buf = ""
+					for text in stream.text_stream:
+						buf += text
+						if len(buf) < max_key_len:
+							continue
+						# Everything except the last max_key_len-1 chars
+						# is safe to convert (no key can span the cut)
+						safe = buf[:len(buf) - (max_key_len - 1)]
+						buf = buf[len(safe):]
+						for key, replacement in conv_table.items():
+							safe = safe.replace(key, replacement)
+						full_response.append(safe)
+						yield safe
+					# Flush remaining buffer
+					if buf:
+						for key, replacement in conv_table.items():
+							buf = buf.replace(key, replacement)
+						full_response.append(buf)
+						yield buf
+				else:
+					for text in stream.text_stream:
+						full_response.append(text)
+						yield text
 
-		return simulated_content
-	except Exception as e:
-		return f"<html><body><p>An error occurred while simulating the webpage: {str(e)}</p></body></html>"
+				# Get actual token usage from the final message
+				final_message = stream.get_final_message()
+
+			simulated_content = "".join(full_response)
+
+			# Calculate cost using actual token counts (Sonnet 4.6: $3.00/M input, $15.00/M output)
+			input_tokens = final_message.usage.input_tokens
+			output_tokens = final_message.usage.output_tokens
+			input_cost = input_tokens * 0.000003
+			output_cost = output_tokens * 0.000015
+			nonlocal total_spend_delta
+			total_spend_delta = input_cost + output_cost
+			output_size = len(simulated_content.encode('utf-8'))
+			print(f"Tokens used: {input_tokens} input, {output_tokens} output")
+			print(f"Output size: {output_size} bytes")
+			print(f"Cost for request: ${format_cost(round(input_cost + output_cost, 2))}")
+			print(f"Total spend this session: ${format_cost(round(total_spend + total_spend_delta, 2))}")
+
+			# Update message history
+			message_history.append({"request": current_request_content, "response": simulated_content})
+			if len(message_history) > MAX_HISTORY:
+				message_history.pop(0)
+
+		except Exception as e:
+			yield f"<html><body><p>An error occurred while simulating the webpage: {str(e)}</p></body></html>"
+
+	total_spend_delta = 0.0
+
+	response = Response(generate(), mimetype='text/html')
+	# After the generator completes, update total spend
+	# (this happens via the nonlocal variable after the response is fully sent)
+
+	@response.call_on_close
+	def on_close():
+		global total_spend
+		total_spend += total_spend_delta
+
+	return response

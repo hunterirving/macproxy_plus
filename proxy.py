@@ -108,7 +108,7 @@ def handle_override_extension(scheme):
 			if scheme in ['http', 'https', 'ftp']:
 				response = extensions[extension_name].handle_request(request)
 				check_override_status(extension_name)
-				return process_response(response, request.url)
+				return response
 			else:
 				print(f"Warning: Unsupported scheme '{scheme}' for override extension.")
 		else:
@@ -197,6 +197,18 @@ def process_response(response, url):
 		'application/x-gzip',
 		'application/x-bzip2',
 		'application/x-7z-compressed',
+		'application/mac-binary',
+		'application/macbinary',
+		'application/x-binary',
+		'application/x-macbinary',
+		'application/binhex',
+		'application/binhex4',
+		'application/mac-binhex',
+		'application/mac-binhex40',
+		'application/x-binhex40',
+		'application/x-mac-binhex40',
+		'application/x-sit',
+		'application/x-stuffit',
 		'application/vnd.openxmlformats-officedocument',
 		'application/vnd.ms-excel',
 		'application/vnd.ms-powerpoint',
@@ -247,6 +259,14 @@ def handle_default_request():
 		status_code = resp.status_code
 		headers = dict(resp.headers)
 		return process_response((content, status_code, headers), url)
+	except requests.exceptions.ConnectionError as e:
+		error_args = str(e.args)
+		if any(keyword in error_args for keyword in ["NameResolutionError", "nodename nor servname provided", "Failed to resolve"]):
+			print(f"DNS lookup failed for {url}")
+			return abort(502, f"DNS lookup failed for {url}. Please check the domain name.")
+		else:
+			print(f"Connection error for {url}: {str(e)}")
+			return abort(502, f"Connection error: {str(e)}")
 	except Exception as e:
 		print(f"Error in handle_default_request: {str(e)}")
 		return abort(500, ERROR_HEADER + str(e))

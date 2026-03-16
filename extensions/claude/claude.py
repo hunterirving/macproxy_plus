@@ -8,7 +8,7 @@ client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
 DOMAIN = "claude.ai"
 
 messages = []
-selected_model = "claude-3-7-sonnet-latest"
+selected_model = "claude-opus-4-6"
 previous_model = selected_model
 
 system_prompt = """Please provide your response in plain text using only ASCII characters. 
@@ -36,10 +36,12 @@ HTML_TEMPLATE = """
 <body>
 	<form method="post" action="/">
 		<select id="model" name="model">
-			<option value="claude-3-7-sonnet-latest" {{ 'selected' if selected_model == 'claude-3-7-sonnet-latest' else '' }}>Claude 3.7 Sonnet</option>
-			<option value="claude-3-5-sonnet-latest" {{ 'selected' if selected_model == 'claude-3-5-sonnet-latest' else '' }}>Claude 3.5 Sonnet</option>
-			<option value="claude-3-5-haiku-latest" {{ 'selected' if selected_model == 'claude-3-5-haiku-latest' else '' }}>Claude 3.5 Haiku</option>
-			<option value="claude-3-opus-latest" {{ 'selected' if selected_model == 'claude-3-opus-latest' else '' }}>Claude 3 Opus</option>
+			<!-- Top of the line -->
+			<option value="claude-opus-4-6" {{ 'selected' if selected_model == 'claude-opus-4-6' else '' }}>Claude Opus 4.6 (Top tier)</option>
+			<!-- Mid-tier -->
+			<option value="claude-sonnet-4-6" {{ 'selected' if selected_model == 'claude-sonnet-4-6' else '' }}>Claude Sonnet 4.6 (Balanced)</option>
+			<!-- Budget / fast -->
+			<option value="claude-haiku-4-5" {{ 'selected' if selected_model == 'claude-haiku-4-5' else '' }}>Claude Haiku 4.5 (Fast &amp; cheap)</option>
 		</select>
 		<input type="text" size="63" name="command" required autocomplete="off">
 		<input type="submit" value="Submit">
