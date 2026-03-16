@@ -259,6 +259,14 @@ def handle_default_request():
 		status_code = resp.status_code
 		headers = dict(resp.headers)
 		return process_response((content, status_code, headers), url)
+	except requests.exceptions.ConnectionError as e:
+		error_args = str(e.args)
+		if any(keyword in error_args for keyword in ["NameResolutionError", "nodename nor servname provided", "Failed to resolve"]):
+			print(f"DNS lookup failed for {url}")
+			return abort(502, f"DNS lookup failed for {url}. Please check the domain name.")
+		else:
+			print(f"Connection error for {url}: {str(e)}")
+			return abort(502, f"Connection error: {str(e)}")
 	except Exception as e:
 		print(f"Error in handle_default_request: {str(e)}")
 		return abort(500, ERROR_HEADER + str(e))
