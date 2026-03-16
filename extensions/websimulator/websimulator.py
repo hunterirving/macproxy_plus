@@ -192,17 +192,17 @@ def simulate_web_request(req):
 
 	try:
 		response = client.messages.create(
-			model="claude-3-5-sonnet-20240620",
+			model="claude-sonnet-4-6",
 			max_tokens=8192,
 			messages=all_messages,
 			system=FULL_SYSTEM_PROMPT
 		)
 		simulated_content = response.content[0].text
 
-		# Estimate request cost
+		# Estimate request cost (Sonnet 4.6: $3.00/M input, $15.00/M output)
 		total_content_length = sum(len(msg['content']) for msg in all_messages) + len(FULL_SYSTEM_PROMPT)
 		input_cost = total_content_length / 4 * 0.000003
-		output_cost = len(simulated_content)/4 * 0.000015
+		output_cost = len(simulated_content) / 4 * 0.000015
 		total_spend += input_cost + output_cost
 		print(f"Estimated cost for request: ${format_cost(round(input_cost + output_cost, 4))}")
 		print(f"Estimated total spend this session: ${format_cost(round(total_spend, 4))}")
