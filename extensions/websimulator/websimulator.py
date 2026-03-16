@@ -205,16 +205,21 @@ def simulate_web_request(req):
 					full_response.append(text)
 					yield text
 
+				# Get actual token usage from the final message
+				final_message = stream.get_final_message()
+
 			simulated_content = "".join(full_response)
 
-			# Estimate request cost (Sonnet 4.6: $3.00/M input, $15.00/M output)
-			total_content_length = sum(len(msg['content']) for msg in all_messages) + len(FULL_SYSTEM_PROMPT)
-			input_cost = total_content_length / 4 * 0.000003
-			output_cost = len(simulated_content) / 4 * 0.000015
+			# Calculate cost using actual token counts (Sonnet 4.6: $3.00/M input, $15.00/M output)
+			input_tokens = final_message.usage.input_tokens
+			output_tokens = final_message.usage.output_tokens
+			input_cost = input_tokens * 0.000003
+			output_cost = output_tokens * 0.000015
 			nonlocal total_spend_delta
 			total_spend_delta = input_cost + output_cost
-			print(f"Estimated cost for request: ${format_cost(round(input_cost + output_cost, 4))}")
-			print(f"Estimated total spend this session: ${format_cost(round(total_spend + total_spend_delta, 4))}")
+			print(f"Tokens used: {input_tokens} input, {output_tokens} output")
+			print(f"Cost for request: ${format_cost(round(input_cost + output_cost, 4))}")
+			print(f"Total spend this session: ${format_cost(round(total_spend + total_spend_delta, 4))}")
 
 			# Update message history
 			message_history.append({"request": current_request_content, "response": simulated_content})
