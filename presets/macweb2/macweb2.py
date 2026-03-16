@@ -32,20 +32,19 @@ DITHERING_ALGORITHM = "FLOYDSTEINBERG"
 WEB_SIMULATOR_PROMPT_ADDENDUM = """<formatting>
 IMPORTANT: The user's web browser only supports (most of) HTML 3.2 (you do not need to acknowledge this to the user, only understand it and use this knowledge to construct the HTML you respond with).
 Their browser has NO CSS support and NO JavaScript support. Never include <script>, <style> or inline scripting or styling in your responses. The output html will always be rendered as black on a white background, and there's no need to try to change this.
-Tags supported by the user's browser include:html, head, body, title, a, h1, h2, h3, p, ul, ol, li, div, table, tr, th, td, caption,
-dl, dt, dd, kbd, samp, var, b, i, u, address, blockquote,
-form, select, option, textarea,
-input - inputs with type="text" and type="password" are fully supported. Inputs with type="radio", type="checkbox", type="file", and type="image" are NOT supported and should never be used. Never prepopulate forms with information. Never reveal passwords in webpages or urls.
-hr - always format like <hr>, and never like <hr />, as this is not supported by the user's browser
+Tags supported by the user's browser include: html, head, body, title, a, h1, h2, h3, h4, h5, h6, p, ul, ol, li, div, table, tr, th, td, caption, dl, dt, dd, kbd, samp, var, b, i, u, address, blockquote, form, select, option, textarea...
+<input> - inputs with type="text" and type="password" are fully supported. Inputs with type="radio", type="checkbox", type="file", and type="image" are NOT supported and should never be used. Never prepopulate forms with information. Never reveal passwords in webpages or urls.
+<hr> - always format like <hr>, and never like <hr />, as this is not supported by the user's browser
 <br> - always format like <br>, and never like <br />, as this is not supported by the user's browser
 <xmp> - if presenting html code to the user, wrap it in this tag to keep it from being rendered as html
-<img> - all images will render as a "broken image" in the user's browser, so use them sparingly. The dimensions of the user's browser are 512 × 342px; any included images should take this into consideration. The alt attribute is not supported, so don't include it. Instead, if a description of the img is relevant, use nearby text to describe it.
-<pre> - can be used to wrap preformatted text, including ASCII art (which could represent game state, be an ASCII art text banner, etc.)
+<img> - all images will render as a "broken image" in the user's browser, so use them sparingly. The dimensions of the user's browser are 512 x 342px; any included images should take this into consideration. The alt attribute is not supported, so don't include it. Instead, if a description of the img is relevant, use nearby text to describe it.
+<pre> - can be used to wrap preformatted text, including ASCII art (which could represent game state, diagrams, drawings, etc.)
 <font> - as CSS is not supported, text can be wrapped in <font> tags to set the size of text like so: <font size="7">. Sizes 1-7 are supported. Neither the face attribute nor the color attribute are supported, so do not use them. As a workaround for setting the font face, the user's web browser has configured all <h6> elements to render using the "Times New Roman" font, <h5> elements to use the "Palatino" font, and <h4> to use the "Chicago" font. By default, these elements will render at font size 1, so you may want to use <font> tags with the size attribute set to enlarge these if you use them).
 <center> - as CSS is not supported, to center a group of elements, you can wrap them in the <center> tag. You can also use the "align" attribute on p, div, and table attributes to align them horizontally.
-<table>s render well on the user's browser, so use them liberally to format tabular data such as posts in forum threads, messages in an inbox, etc. You can also render a table without a border to arrange information without giving the appearance of a table.
-<tt> - use this tag to render text as it would appear on a fixed-width device such as a teletype (telegrams, simulated command-line interfaces, etc.)
-Never use script tags or style tags.
+<table>s render well on the user's browser, but rendering them takes considerable time, so use them sparingly to format tabular data such as posts in forum threads, messages in an inbox, etc. Never nest tables, as this takes especially long to render. You can render a table without a border to arrange information without giving the appearance of a table. Never use more than two tables on a given page.
+<tt> - use this tag to render text as it would appear on a fixed-width device such as a teletype (raw text files, telegrams, simulated command-line interfaces, etc.)
+The user's browser does not support automatic redirects, so hardcode direct links within the HTML. For example, if including webring-style links for next and previous sites in the ring, hardcode links to the imagined external sites rather than including "/prev" and "/next" links in the html.
+Always present text in English, as characters from other languages will not render correctly.
 </formatting>"""
 
 CONVERT_CHARACTERS = True
@@ -71,8 +70,8 @@ CONVERSION_TABLE = {
 	"&rdquo;": b"''",
 	"–": b"-",
 	"&ndash;": b"-",
-	"—": b"--",
-	"&mdash;": b"--",
+	"—": b"-",
+	"&mdash;": b"-",
 	"―": b"-",
 	"&horbar;": b"-",
 	"·": b"-",
@@ -121,14 +120,14 @@ CONVERSION_TABLE = {
 	"ō": b"o",
 	"ó": b"o",
 	"ū": b"u",
-	"⟨": b"<",
-	"⟩": b">",
-	"←": b"<",
-	"›": b">",
-	"‹": b"<",
-	"&larr;": b"<",
-	"→": b">",
-	"&rarr;": b">",
+	"⟨": b"&lt;",
+	"⟩": b"&gt;",
+	"←": b"&lt;",
+	"›": b"&gt;",
+	"‹": b"&lt;",
+	"&larr;": b"&lt;",
+	"→": b"&gt;",
+	"&rarr;": b"&gt;",
 	"↑": b"^",
 	"&uarr;": b"^",
 	"↓": b"v",

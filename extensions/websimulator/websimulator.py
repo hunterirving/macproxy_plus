@@ -153,8 +153,8 @@ def handle_request(req):
 	return simulate_web_request(req)
 
 def format_cost(cost):
-	formatted = f"{cost:.4f}"
-	return f"{GREEN}{formatted[:formatted.index('.')+3]}{RESET}{formatted[formatted.index('.')+3:]}"
+	formatted = f"{cost:.2f}"
+	return f"{GREEN}{formatted}{RESET}"
 
 def simulate_web_request(req):
 	global message_history
@@ -195,15 +195,51 @@ def simulate_web_request(req):
 		full_response = []
 
 		try:
+			should_convert = config.CONVERT_CHARACTERS and config.CONVERSION_TABLE
+			if should_convert:
+				# Pre-decode the conversion table once
+				conv_table = {}
+				max_key_len = 0
+				for key, replacement in config.CONVERSION_TABLE.items():
+					if isinstance(replacement, bytes):
+						replacement = replacement.decode("utf-8")
+					conv_table[key] = replacement
+					if len(key) > max_key_len:
+						max_key_len = len(key)
+
 			with client.messages.stream(
 				model="claude-sonnet-4-6",
 				max_tokens=8192,
 				messages=all_messages,
 				system=FULL_SYSTEM_PROMPT
 			) as stream:
-				for text in stream.text_stream:
-					full_response.append(text)
-					yield text
+				if should_convert:
+					# Buffer raw text and only convert/yield when we
+					# have enough to guarantee no conversion key spans
+					# the buffer/remainder boundary.
+					buf = ""
+					for text in stream.text_stream:
+						buf += text
+						if len(buf) < max_key_len:
+							continue
+						# Everything except the last max_key_len-1 chars
+						# is safe to convert (no key can span the cut)
+						safe = buf[:len(buf) - (max_key_len - 1)]
+						buf = buf[len(safe):]
+						for key, replacement in conv_table.items():
+							safe = safe.replace(key, replacement)
+						full_response.append(safe)
+						yield safe
+					# Flush remaining buffer
+					if buf:
+						for key, replacement in conv_table.items():
+							buf = buf.replace(key, replacement)
+						full_response.append(buf)
+						yield buf
+				else:
+					for text in stream.text_stream:
+						full_response.append(text)
+						yield text
 
 				# Get actual token usage from the final message
 				final_message = stream.get_final_message()
@@ -217,9 +253,11 @@ def simulate_web_request(req):
 			output_cost = output_tokens * 0.000015
 			nonlocal total_spend_delta
 			total_spend_delta = input_cost + output_cost
+			output_size = len(simulated_content.encode('utf-8'))
 			print(f"Tokens used: {input_tokens} input, {output_tokens} output")
-			print(f"Cost for request: ${format_cost(round(input_cost + output_cost, 4))}")
-			print(f"Total spend this session: ${format_cost(round(total_spend + total_spend_delta, 4))}")
+			print(f"Output size: {output_size} bytes")
+			print(f"Cost for request: ${format_cost(round(input_cost + output_cost, 2))}")
+			print(f"Total spend this session: ${format_cost(round(total_spend + total_spend_delta, 2))}")
 
 			# Update message history
 			message_history.append({"request": current_request_content, "response": simulated_content})
