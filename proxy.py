@@ -108,7 +108,7 @@ def handle_override_extension(scheme):
 			if scheme in ['http', 'https', 'ftp']:
 				response = extensions[extension_name].handle_request(request)
 				check_override_status(extension_name)
-				return process_response(response, request.url)
+				return response
 			else:
 				print(f"Warning: Unsupported scheme '{scheme}' for override extension.")
 		else:
