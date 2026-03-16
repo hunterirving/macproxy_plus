@@ -1,7 +1,7 @@
 # HINT: MacWeb 2.0 doesn't seem to have CSS support. To work around this, in MacWeb 2.0 set <h4> styling to font="Chicago" with Size="As Is".
 # HINT: WebSimulator is not associated with or endorsed by WebSim.
 
-from flask import request, render_template_string
+from flask import request, render_template_string, Response
 import anthropic
 import config
 import importlib.util
@@ -190,28 +190,49 @@ def simulate_web_request(req):
 	# Combine context messages with the current request
 	all_messages = context_messages + [current_request]
 
-	try:
-		response = client.messages.create(
-			model="claude-sonnet-4-6",
-			max_tokens=8192,
-			messages=all_messages,
-			system=FULL_SYSTEM_PROMPT
-		)
-		simulated_content = response.content[0].text
+	def generate():
+		"""Stream HTML chunks as they arrive from the API."""
+		full_response = []
 
-		# Estimate request cost (Sonnet 4.6: $3.00/M input, $15.00/M output)
-		total_content_length = sum(len(msg['content']) for msg in all_messages) + len(FULL_SYSTEM_PROMPT)
-		input_cost = total_content_length / 4 * 0.000003
-		output_cost = len(simulated_content) / 4 * 0.000015
-		total_spend += input_cost + output_cost
-		print(f"Estimated cost for request: ${format_cost(round(input_cost + output_cost, 4))}")
-		print(f"Estimated total spend this session: ${format_cost(round(total_spend, 4))}")
+		try:
+			with client.messages.stream(
+				model="claude-sonnet-4-6",
+				max_tokens=8192,
+				messages=all_messages,
+				system=FULL_SYSTEM_PROMPT
+			) as stream:
+				for text in stream.text_stream:
+					full_response.append(text)
+					yield text
 
-		# Update message history
-		message_history.append({"request": current_request_content, "response": simulated_content})
-		if len(message_history) > MAX_HISTORY:
-			message_history.pop(0)
+			simulated_content = "".join(full_response)
 
-		return simulated_content
-	except Exception as e:
-		return f"<html><body><p>An error occurred while simulating the webpage: {str(e)}</p></body></html>"
+			# Estimate request cost (Sonnet 4.6: $3.00/M input, $15.00/M output)
+			total_content_length = sum(len(msg['content']) for msg in all_messages) + len(FULL_SYSTEM_PROMPT)
+			input_cost = total_content_length / 4 * 0.000003
+			output_cost = len(simulated_content) / 4 * 0.000015
+			nonlocal total_spend_delta
+			total_spend_delta = input_cost + output_cost
+			print(f"Estimated cost for request: ${format_cost(round(input_cost + output_cost, 4))}")
+			print(f"Estimated total spend this session: ${format_cost(round(total_spend + total_spend_delta, 4))}")
+
+			# Update message history
+			message_history.append({"request": current_request_content, "response": simulated_content})
+			if len(message_history) > MAX_HISTORY:
+				message_history.pop(0)
+
+		except Exception as e:
+			yield f"<html><body><p>An error occurred while simulating the webpage: {str(e)}</p></body></html>"
+
+	total_spend_delta = 0.0
+
+	response = Response(generate(), mimetype='text/html')
+	# After the generator completes, update total spend
+	# (this happens via the nonlocal variable after the response is fully sent)
+
+	@response.call_on_close
+	def on_close():
+		global total_spend
+		total_spend += total_spend_delta
+
+	return response
