@@ -15,6 +15,15 @@ HEADERS = {
 	"user-agent" : "macproxybot/1.0"
 }
 
+# Extract language code from host, default to 'en'
+def get_lang_from_host(req):
+	host = req.headers.get('Host', '')
+	if host.endswith('.wikipedia.org'):
+		lang = host.split('.')[0]
+		if lang and len(lang) <= 5:
+			return lang
+	return 'en'
+
 def create_search_form():
 	return '''
 	<br>
@@ -27,9 +36,9 @@ def create_search_form():
 	</center>
 	'''
 
-def get_featured_article_snippet():
+def get_featured_article_snippet(lang='en'):
 	try:
-		response = requests.get("https://en.wikipedia.org/wiki/Main_Page", headers=HEADERS)
+		response = requests.get(f"https://{lang}.wikipedia.org/wiki/Main_Page", headers=HEADERS)
 		response.raise_for_status()
 		soup = BeautifulSoup(response.text, 'html.parser')
 		tfa_div = soup.find('div', id='mp-tfa')
@@ -46,26 +55,27 @@ def process_html(content, title):
 
 def handle_request(req):
 	if req.method == 'GET':
+		lang = get_lang_from_host(req)
 		path = req.path.lstrip('/')
-		
+
 		if not path or path == 'wiki/':
 			search_query = req.args.get('search', '')
 			if not search_query:
-				content = create_search_form() + get_featured_article_snippet()
+				content = create_search_form() + get_featured_article_snippet(lang)
 				return process_html(content, "Wikipedia"), 200
-			
+
 			# Redirect to /wiki/[SEARCH_TERM]
-			return handle_wiki_page(search_query)
+			return handle_wiki_page(search_query, lang)
 
 		if path.startswith('wiki/'):
 			page_title = urllib.parse.unquote(path.replace('wiki/', ''))
-			return handle_wiki_page(page_title)
+			return handle_wiki_page(page_title, lang)
 
 	return "Method not allowed", 405
 
-def handle_wiki_page(title):
+def handle_wiki_page(title, lang='en'):
 	# First, try to search using the Wikipedia API
-	search_url = f"https://{DOMAIN}/w/api.php"
+	search_url = f"https://{lang}.wikipedia.org/w/api.php"
 	params = {
 		"action": "query",
 		"format": "json",
@@ -85,7 +95,7 @@ def handle_wiki_page(title):
 			found_title = search_data["query"]["search"][0]["title"]
 			
 			# Now fetch the page using the found title
-			url = f"https://{DOMAIN}/wiki/{urllib.parse.quote(found_title)}"
+			url = f"https://{lang}.wikipedia.org/wiki/{urllib.parse.quote(found_title)}"
 			response = requests.get(url, headers=HEADERS)
 			response.raise_for_status()
 
