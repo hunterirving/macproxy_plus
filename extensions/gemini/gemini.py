@@ -9,7 +9,7 @@ client = genai.Client(api_key=config.GEMINI_API_KEY)
 DOMAIN = "gemini.google.com"
 
 messages = []
-selected_model = "gemini-2.0-flash"
+selected_model = "gemini-3-flash-preview"
 previous_model = selected_model
 
 system_prompt = """Please provide your response in plain text using only ASCII characters. 
@@ -27,15 +27,8 @@ HTML_TEMPLATE = """
 <body>
 	<form method="post" action="/">
 		<select id="model" name="model">
-			<option value="gemini-2.0-pro-exp-02-05" {{ 'selected' if selected_model == 'gemini-2.0-pro-exp-0205' else '' }}>Gemini 2.0 Pro Experimental 0205</option>
-			<option value="gemini-2.0-flash-lite-preview-02-05" {{ 'selected' if selected_model == 'gemini-2.0-flash-lite-preview-0205' else '' }}>Gemini 2.0 Flash Lite Preview 0205</option>
-			<option value="gemini-2.0-flash" {{ 'selected' if selected_model == 'gemini-2.0-flash' else '' }}>Gemini 2.0 Flash</option>
-			<option value="gemini-2.0-flash-exp" {{ 'selected' if selected_model == 'gemini-2.0-flash-exp' else '' }}>Gemini 2.0 Flash Experimental</option>
-			<option value="gemini-exp-1206" {{ 'selected' if selected_model == 'gemini-exp-1206' else '' }}>Gemini Experimental 1206</option>
-			<option value="learnlm-1.5-pro-experimental" {{ 'selected' if selected_model == 'learnlm-1.5-pro-experimental' else '' }}>LearnLM 1.5 Pro Experimental</option>
-			<option value="gemini-1.5-pro-latest" {{ 'selected' if selected_model == 'gemini-1.5-pro-latest' else '' }}>Gemini 1.5 Pro Latest</option>
-			<option value="gemini-1.5-flash-latest" {{ 'selected' if selected_model == 'gemini-1.5-flash-latest' else '' }}>Gemini 1.5 Flash Latest</option>
-			<option value="gemini-1.5-flash-8b" {{ 'selected' if selected_model == 'gemini-1.5-flash-8b' else '' }}>Gemini 1.5 Flash 8b</option>
+			<option value="gemini-3-flash-preview" {{ 'selected' if selected_model == 'gemini-3-flash-preview' else '' }}>Gemini 3 Flash Preview (Balanced)</option>
+			<option value="gemini-3.1-flash-lite-preview" {{ 'selected' if selected_model == 'gemini-3.1-flash-lite-preview' else '' }}>Gemini 3.1 Flash-Lite Preview (Fast)</option>
 		</select>
 		<input type="text" size="63" name="command" required autocomplete="off">
 		<input type="submit" value="Submit">
@@ -116,7 +109,7 @@ def chat_interface(request):
 			messages.append({"role": "assistant", "content": error_message})
 	
 	# Generate output HTML
-	for msg in reversed(messages[-10:]):  # Show last 10 messages
+	for msg in reversed(messages[-10:]):
 		if msg['role'] == 'user':
 			output += f"<b>User:</b> {msg['content']}<br>"
 		elif msg['role'] == 'model' or msg['role'] == 'assistant':
