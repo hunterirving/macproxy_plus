@@ -5,10 +5,10 @@ import config
 # Initialize the OpenAI client with your API key
 client = OpenAI(api_key=config.OPEN_AI_API_KEY)
 
-DOMAIN = "chatgpt.com"
+DOMAIN = "chat.com"
 
 messages = []
-selected_model = "gpt-4o"
+selected_model = "gpt-5.4"
 previous_model = selected_model
 
 system_prompts = [
@@ -20,7 +20,7 @@ system_prompts = [
 		"of the tag in <b> tags to emphasize it, for example \"the <b>a</b> tag\". "
 		"You do not need to provide a <body> tag. "
 		"When responding with a list, ALWAYS format it using <ol> or <ul> with individual list items wrapped in <li> tags. "
-		"When responding with a link,  the <a> tag."},
+		"When responding with a link, use the <a> tag."},
 	{"role": "system", "content": "When responding with code or other formatted text (including prose or poetry), always insert "
 		"<pre></pre> tags with <code></code> tags nested inside (which contain the formatted content)."
 		"If the user asks you to respond 'in a code block', this is what they mean. NEVER use three backticks "
@@ -41,11 +41,14 @@ HTML_TEMPLATE = """
 <body>
 	<form method="post" action="/">
 		<select id="model" name="model">
-		    <option value="chatgpt-4o-latest" {{ 'selected' if selected_model == 'chatgpt-4o-latest' else '' }}>ChatGPT-4o</option>
-			<option value="gpt-4o" {{ 'selected' if selected_model == 'gpt-4o' else '' }}>GPT-4o</option>
-			<option value="gpt-4o-mini" {{ 'selected' if selected_model == 'gpt-4o-mini' else '' }}>GPT-4o Mini</option>
-			<option value="gpt-4-turbo" {{ 'selected' if selected_model == 'gpt-4-turbo' else '' }}>GPT-4</option>
-			<option value="gpt-3.5-turbo" {{ 'selected' if selected_model == 'gpt-3.5-turbo' else '' }}>GPT-3.5</option>
+			<!-- Top of the line -->
+			<option value="gpt-5.4" {{ 'selected' if selected_model == 'gpt-5.4' else '' }}>GPT-5.4 (Flagship)</option>
+			<!-- Mid-tier -->
+			<option value="gpt-4.1" {{ 'selected' if selected_model == 'gpt-4.1' else '' }}>GPT-4.1 (Mid-tier)</option>
+			<option value="gpt-5-mini" {{ 'selected' if selected_model == 'gpt-5-mini' else '' }}>GPT-5 Mini (Balanced)</option>
+			<!-- Budget / fast -->
+			<option value="gpt-5-nano" {{ 'selected' if selected_model == 'gpt-5-nano' else '' }}>GPT-5 Nano (Fast &amp; cheap)</option>
+			<option value="gpt-4.1-mini" {{ 'selected' if selected_model == 'gpt-4.1-mini' else '' }}>GPT-4.1 Mini (Budget)</option>
 		</select>
 		<input type="text" size="63" name="command" required autocomplete="off">
 		<input type="submit" value="Submit">
@@ -96,12 +99,12 @@ def chat_interface(request):
 			messages=messages_to_send
 		)
 		response_body = response.choices[0].message.content
-		messages.append({"role": "system", "content": response_body})
+		messages.append({"role": "assistant", "content": response_body})
 
 	for msg in reversed(messages[-10:]):
 		if msg['role'] == 'user':
 			output += f"<b>User:</b> {msg['content']}<br>"
-		elif msg['role'] == 'system':
+		elif msg['role'] == 'assistant':
 			output += f"<b>ChatGPT:</b> {msg['content']}<br>"
 
 	return render_template_string(HTML_TEMPLATE, output=output, selected_model=selected_model)
