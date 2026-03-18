@@ -135,7 +135,7 @@ def get_override_status():
 	return override_active
 
 def handle_request(req):
-	global override_active, message_history
+	global override_active, message_history, total_spend
 
 	parsed_url = urlparse(req.url)
 	is_websimulator_domain = parsed_url.netloc == DOMAIN
@@ -144,6 +144,9 @@ def handle_request(req):
 		if req.method == 'POST' and req.form.get('action') in ['enable', 'disable']:
 			action = req.form.get('action')
 			override_active = (action == 'enable')
+			if not override_active:
+				message_history = []
+				total_spend = 0.00
 
 		status = "websimulator enabled" if override_active else "websimulator disabled"
 		return render_template_string(WEBSIMULATOR_TEMPLATE, 
